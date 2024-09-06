@@ -1,0 +1,79 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-voxelverse-release",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-Command",
+                "if (!(Test-Path ${workspaceFolder}/build)) { mkdir ${workspaceFolder}/build };",
+                "cd ${workspaceFolder};",
+                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17;",
+                "cmake --build build --config Release;",
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "build-voxelverse-debug",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-Command",
+                "if (!(Test-Path ${workspaceFolder}/build-debug)) { mkdir ${workspaceFolder}/build-debug };",
+                "cd ${workspaceFolder};",
+                "cmake -S . -B build-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17;",
+                "cmake --build build-debug --config Debug;",
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "run-voxelverse-release",
+            "type": "process",
+            "command": "${workspaceFolder}/build/Release/voxelverse.exe",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOn": [
+                "build-voxelverse-release"
+            ]
+        },
+        {
+            "label": "run-voxelverse-debug",
+            "type": "process",
+            "command": "${workspaceFolder}/build-debug/Debug/voxelverse.exe",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOn": [
+                "build-voxelverse-debug"
+            ]
+        }
+    ]
+}
