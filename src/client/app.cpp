@@ -107,7 +107,6 @@ App::~App()
     enet_host_flush(m_client);
     enet_host_destroy(m_client);
     enet_deinitialize();
-    gamePerformanceProfiler.print();
 }
 
 void App::draw()
@@ -164,6 +163,7 @@ void App::main_loop()
         }
         m_current_frame_count++;
     }
+    gamePerformanceProfiler.print();
     LoggerThread::GetLoggerThread().ExitLoggerThread();
     const Options options { .fullscreen = m_window.is_fullscreen(), .msaa = m_renderer.current_msaa_samples() };
     set_options(options);
