@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 
+#include <game_performance_profiler.hpp>
 #include <nnm/nnm.hpp>
 
 void WorldRenderer::push_mesh_update(nnm::Vector3i chunk_pos)
@@ -57,6 +58,7 @@ WorldRenderer::WorldRenderer(mve::Renderer& renderer)
 
 void WorldRenderer::resize()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     constexpr float angle = nnm::radians(90.0f);
     const float ratio = static_cast<float>(m_renderer->extent().x) / static_cast<float>(m_renderer->extent().y);
     constexpr float near = 0.01f;
@@ -66,6 +68,7 @@ void WorldRenderer::resize()
     const auto proj = nnm::Transform3f::from_perspective_right_hand_0to1(angle, ratio, near, far)
                           .rotate_axis_angle_local(nnm::Vector3f::axis_x(), nnm::pi() / 2.0f);
     m_global_ubo.update(m_proj_location, proj.matrix);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void WorldRenderer::set_view(const nnm::Matrix4f& view)
 {
@@ -73,6 +76,7 @@ void WorldRenderer::set_view(const nnm::Matrix4f& view)
 }
 void WorldRenderer::draw(const Player& camera)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_frustum.update_camera(camera);
 
     m_renderer->bind_graphics_pipeline(m_graphics_pipeline);
@@ -95,6 +99,7 @@ void WorldRenderer::draw(const Player& camera)
             box.mesh.draw(m_global_descriptor_set);
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 // void WorldRenderer::rebuild_mesh_lookup()
 // {
@@ -121,6 +126,7 @@ void WorldRenderer::remove_data(const nnm::Vector3i position)
 
 uint64_t WorldRenderer::create_debug_box(const BoundingBox& box, const float width, const nnm::Vector3f color)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     WireBoxMesh box_mesh(
         *m_renderer,
         m_graphics_pipeline,
@@ -138,6 +144,7 @@ uint64_t WorldRenderer::create_debug_box(const BoundingBox& box, const float wid
         }
         count++;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return count;
 }
 
@@ -159,7 +166,9 @@ void WorldRenderer::delete_all_debug_boxes()
 }
 void WorldRenderer::process_mesh_updates(const WorldData& world_data)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::erase_if(m_chunk_mesh_update_list, [&](const nnm::Vector3i& chunk_pos) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return !m_chunk_mesh_lookup.contains(chunk_pos);
     });
     m_temp_chunk_buffer_data.clear();
@@ -179,4 +188,5 @@ void WorldRenderer::process_mesh_updates(const WorldData& world_data)
         }
     }
     m_chunk_mesh_update_list.clear();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

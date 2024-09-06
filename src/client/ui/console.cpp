@@ -1,6 +1,7 @@
 #include "console.hpp"
 
 #include <mve/window.hpp>
+#include <game_performance_profiler.hpp>
 
 Console::Console(TextPipeline& pipeline)
     : m_input_text(pipeline)
@@ -20,11 +21,14 @@ void Console::resize(const nnm::Vector2i extent) const
 
 void Console::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_input_text.draw();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Console::input_char(const char character)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const std::optional<int> pos = m_input_text.cursor_pos();
     if (pos.has_value()) {
         m_input_str.insert(m_input_str.cbegin() + *pos, character);
@@ -36,11 +40,14 @@ void Console::input_char(const char character)
     if (pos.has_value()) {
         m_input_text.cursor_right();
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Console::backspace()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (m_input_str.empty() || m_input_text.cursor_pos() == 0) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return;
     }
     if (const std::optional<int> pos = m_input_text.cursor_pos(); pos.has_value()) {
@@ -51,6 +58,7 @@ void Console::backspace()
         m_input_str.pop_back();
     }
     m_input_text.update(m_input_str);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Console::del()
@@ -68,6 +76,7 @@ void Console::del()
 
 void Console::update_from_window(const mve::Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for (const std::string& str : window.input_stream()) {
         for (const char c : str) {
             input_char(c);
@@ -90,6 +99,7 @@ void Console::update_from_window(const mve::Window& window)
         new_pos = std::clamp(new_pos, 0, static_cast<int>(m_input_str.length()));
         m_input_text.set_cursor_pos(new_pos);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Console::enable_cursor() const
 {

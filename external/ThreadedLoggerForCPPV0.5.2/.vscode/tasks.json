@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build-voxelverse-release",
+            "label": "build-ThreadedLoggerForCPP-release",
             "type": "shell",
             "command": "powershell.exe",
             "args": [
@@ -23,14 +23,14 @@
             "problemMatcher": []
         },
         {
-            "label": "build-voxelverse-debug",
+            "label": "build-ThreadedLoggerForCPP-debug",
             "type": "shell",
             "command": "powershell.exe",
             "args": [
                 "-Command",
                 "if (!(Test-Path ${workspaceFolder}/build)) { mkdir ${workspaceFolder}/build };",
                 "cd ${workspaceFolder};",
-                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17 -DPERFORMANCE_MONITOR=1;",
+                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17;",
                 "cmake --build build --config Debug;",
             ],
             "group": {
@@ -44,9 +44,9 @@
             "problemMatcher": []
         },
         {
-            "label": "run-voxelverse-release",
+            "label": "run-ThreadedLoggerForCPP-release",
             "type": "process",
-            "command": "${workspaceFolder}/build/Release/voxelverse.exe",
+            "command": "${workspaceFolder}/build/Release/ThreadedLoggerForCPP.exe",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -56,13 +56,13 @@
                 "panel": "shared"
             },
             "dependsOn": [
-                "build-voxelverse-release"
+                "build-ThreadedLoggerForCPP-release"
             ]
         },
         {
-            "label": "run-voxelverse-debug",
+            "label": "run-ThreadedLoggerForCPP-debug",
             "type": "process",
-            "command": "${workspaceFolder}/build/Debug/voxelverse.exe",
+            "command": "${workspaceFolder}/build/Debug/ThreadedLoggerForCPP.exe",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -72,7 +72,7 @@
                 "panel": "shared"
             },
             "dependsOn": [
-                "build-voxelverse-debug"
+                "build-ThreadedLoggerForCPP-debug"
             ]
         }
     ]

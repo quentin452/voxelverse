@@ -2,6 +2,7 @@
 
 #include <mve/common.hpp>
 
+#include <game_performance_profiler.hpp>
 namespace mve::detail {
 
 DescriptorSetAllocator::DescriptorSetAllocator()
@@ -24,6 +25,7 @@ DescriptorSetAllocator::DescriptorSetAllocator()
 
 void DescriptorSetAllocator::cleanup(const vk::DispatchLoaderDynamic& loader, const vk::Device device)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for (std::optional<DescriptorSetImpl>& set : m_descriptor_sets) {
         if (set.has_value()) {
             device.freeDescriptorSets(set->vk_pool, 1, &set->vk_handle, loader);
@@ -32,19 +34,23 @@ void DescriptorSetAllocator::cleanup(const vk::DispatchLoaderDynamic& loader, co
     for (const vk::DescriptorPool descriptor_pool : m_descriptor_pools) {
         device.destroy(descriptor_pool, nullptr, loader);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void DescriptorSetAllocator::free(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const DescriptorSetImpl& descriptor_set)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // ReSharper disable once CppExpressionWithoutSideEffects
     device.freeDescriptorSets(descriptor_set.vk_pool, 1, &descriptor_set.vk_handle, loader);
     m_descriptor_sets[descriptor_set.id].reset();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 DescriptorSetImpl DescriptorSetAllocator::create(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const vk::DescriptorSetLayout layout)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (m_descriptor_pools.empty()) {
         m_descriptor_pools.push_back(create_pool(loader, device, vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet));
         m_current_pool_index = 0;
@@ -89,6 +95,7 @@ DescriptorSetImpl DescriptorSetAllocator::create(
         .id = *id, .vk_handle = *descriptor_set, .vk_pool = m_descriptor_pools.at(m_current_pool_index)
     };
     m_descriptor_sets[*id] = descriptor_set_impl;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return descriptor_set_impl;
 }
 
@@ -98,6 +105,7 @@ std::optional<vk::DescriptorSet> DescriptorSetAllocator::try_create(
     const vk::Device device,
     const vk::DescriptorSetLayout layout)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto alloc_info
         = vk::DescriptorSetAllocateInfo().setDescriptorPool(pool).setDescriptorSetCount(1).setPSetLayouts(&layout);
 
@@ -113,11 +121,13 @@ std::optional<vk::DescriptorSet> DescriptorSetAllocator::try_create(
         }
         MVE_ASSERT(false, "[Renderer] Failed to allocate descriptor sets")
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 vk::DescriptorPool DescriptorSetAllocator::create_pool(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const vk::DescriptorPoolCreateFlags flags) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<vk::DescriptorPoolSize> sizes;
     sizes.reserve(m_sizes.size());
 
@@ -132,6 +142,7 @@ vk::DescriptorPool DescriptorSetAllocator::create_pool(
     const vk::ResultValue<vk::DescriptorPool> descriptor_pool_result
         = device.createDescriptorPool(pool_info, nullptr, loader);
     MVE_ASSERT(descriptor_pool_result.result == vk::Result::eSuccess, "[Renderer] Failed to create descriptor pool")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return descriptor_pool_result.value;
 }
 

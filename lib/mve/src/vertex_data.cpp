@@ -4,10 +4,13 @@
 
 #include <mve/common.hpp>
 
+#include <game_performance_profiler.hpp>
+
 namespace mve {
 
 int get_vertex_layout_bytes(const VertexLayout& vertex_layout)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     int byte_count = 0;
     for (const VertexAttributeType type : vertex_layout) {
         switch (type) {
@@ -25,6 +28,7 @@ int get_vertex_layout_bytes(const VertexLayout& vertex_layout)
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return byte_count;
 }
 
@@ -36,25 +40,30 @@ VertexData::VertexData(VertexLayout layout)
 
 void VertexData::push_back(const float value)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(next_type() == VertexAttributeType::scalar, "[VertexData] Invalid type: scalar")
 
     m_data.push_back(value);
 
     m_data_count++;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void VertexData::push_back(nnm::Vector2f value)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(next_type() == VertexAttributeType::vec2, "[VertexData] Invalid type: vec2")
 
     m_data.push_back(value[0]);
     m_data.push_back(value[1]);
 
     m_data_count++;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void VertexData::push_back(nnm::Vector3f value)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(next_type() == VertexAttributeType::vec3, "[VertexData] Invalid type: vec3")
 
     m_data.push_back(value[0]);
@@ -62,10 +71,12 @@ void VertexData::push_back(nnm::Vector3f value)
     m_data.push_back(value[2]);
 
     m_data_count++;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void VertexData::push_back(nnm::Vector4f value)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(next_type() == VertexAttributeType::vec4, "[VertexData] Invalid type: vec4")
 
     m_data.push_back(value[0]);
@@ -74,6 +85,7 @@ void VertexData::push_back(nnm::Vector4f value)
     m_data.push_back(value[3]);
 
     m_data_count++;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 VertexAttributeType VertexData::next_type() const noexcept

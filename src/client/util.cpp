@@ -1,4 +1,5 @@
 #include "util.hpp"
+#include <game_performance_profiler.hpp>
 
 #include <optional>
 
@@ -9,6 +10,7 @@ namespace mve {
 
 ModelData load_model(const std::filesystem::path& path)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -32,6 +34,7 @@ ModelData load_model(const std::filesystem::path& path)
 
         bool operator==(const Vertex& other) const
         {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return position == other.position && color == other.color && texture_coord == other.texture_coord;
         }
     };
@@ -74,6 +77,7 @@ ModelData load_model(const std::filesystem::path& path)
         data.push_back(color);
         data.push_back(texture_coord);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { vertex_layout, data, indices };
 }
 

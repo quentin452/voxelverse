@@ -5,19 +5,27 @@
 #include <nlohmann/json.hpp>
 
 #include "../common/assert.hpp"
-#include "../common/logger.hpp"
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
+
+#include <game_performance_profiler.hpp>
 
 using json = nlohmann::json;
 
 Options load_options()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::ifstream file("options.json");
     if (!file.is_open()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return Options {};
     }
     const json data = json::parse(file, nullptr, false);
     if (data.is_discarded()) {
-        LOG->error("[Options] Invalid JSON");
+        LOGGER_THREAD(LogLevel::ERRORING, "[Options] Invalid JSON")
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return Options {};
     }
     Options options;
@@ -51,6 +59,7 @@ Options load_options()
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return options;
 }
 

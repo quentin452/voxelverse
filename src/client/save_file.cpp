@@ -7,9 +7,11 @@
 
 #include "../common/assert.hpp"
 #include "common.hpp"
+#include <game_performance_profiler.hpp>
 
 SaveFile::SaveFile(const size_t max_file_size, const std::string& name)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (!std::filesystem::exists("save")) {
         std::filesystem::create_directory("save");
     }
@@ -19,6 +21,7 @@ SaveFile::SaveFile(const size_t max_file_size, const std::string& name)
     db_options.max_file_size = max_file_size;
     const leveldb::Status db_status = leveldb::DB::Open(db_options, "save/" + name, &m_db);
     VV_REL_ASSERT(db_status.ok(), "[SaveFile] Leveldb open not ok for " + name)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 SaveFile::~SaveFile()
 {
@@ -27,9 +30,11 @@ SaveFile::~SaveFile()
 // ReSharper disable once CppMemberFunctionMayBeConst
 std::optional<std::string> SaveFile::at(const std::string& key)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::string data;
     leveldb::Status db_status = m_db->Get(leveldb::ReadOptions(), key, &data);
     if (db_status.IsNotFound()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return {};
     }
     VV_REL_ASSERT(db_status.ok(), "[SaveFile] Failed to get key: " + key)
@@ -50,13 +55,13 @@ std::optional<std::string> SaveFile::at(const std::string& key)
         static_cast<int>(decompressed_data.size()));
     VV_REL_ASSERT(result_size >= 0, "[SaveFile] Failed to decompress data at key: " + key)
     decompressed_data.resize(result_size);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return std::string(decompressed_data.begin(), decompressed_data.end());
 }
 
 void SaveFile::insert(const std::string& key, const std::string& value)
 {
-
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<char> compressed_data(LZ4_compressBound(static_cast<int>(value.size())));
     const int compressed_size = LZ4_compress_default(
         value.data(),
@@ -82,6 +87,7 @@ void SaveFile::insert(const std::string& key, const std::string& value)
         const leveldb::Status db_status = m_db->Put(leveldb::WriteOptions(), key, data_stream.str());
         VV_REL_ASSERT(db_status.ok(), "[SaveFile] Failed to write key: " + key)
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void SaveFile::begin_batch()

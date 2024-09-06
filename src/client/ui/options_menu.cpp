@@ -5,6 +5,7 @@
 #include "../common.hpp"
 #include "../options.hpp"
 #include "../ui_pipeline.hpp"
+#include <game_performance_profiler.hpp>
 
 OptionsMenu::OptionsMenu(UIPipeline& ui_pipeline, TextPipeline& text_pipeline)
     : m_button_texture(std::make_shared<mve::Texture>(ui_pipeline.renderer(), res_path("button_gray.png")))
@@ -44,6 +45,7 @@ void OptionsMenu::resize(const nnm::Vector2i extent)
 
 void OptionsMenu::update(mve::Window& window, mve::Renderer& renderer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_fullscreen_button.set_text(window.is_fullscreen() ? "Fullscreen: On" : "Fullscreen: Off");
     m_fullscreen_button.update(window);
     if (m_fullscreen_button.is_pressed()) {
@@ -86,4 +88,5 @@ void OptionsMenu::update(mve::Window& window, mve::Renderer& renderer)
         const Options options { .fullscreen = window.is_fullscreen(), .msaa = renderer.current_msaa_samples() };
         set_options(options);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

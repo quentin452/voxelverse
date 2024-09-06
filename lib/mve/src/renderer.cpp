@@ -1,3 +1,10 @@
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
+
+#include <game_performance_profiler.hpp>
+
 #include <mve/renderer.hpp>
 
 #include <fstream>
@@ -15,12 +22,11 @@
 #include <vk_mem_alloc.h>
 
 #include <mve/common.hpp>
-#include <nnm/nnm.hpp>
 #include <mve/vertex_data.hpp>
 #include <mve/window.hpp>
+#include <nnm/nnm.hpp>
 
 #include "renderer_utils.hpp"
-
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace mve {
@@ -37,6 +43,7 @@ Renderer::Renderer(
     , m_vk_instance(create_vk_instance(app_name, app_version_major, app_version_minor, app_version_patch))
     , m_resource_handle_count(0)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto vkGetDeviceProcAddr
         = reinterpret_cast<PFN_vkGetDeviceProcAddr>(vkGetInstanceProcAddr(m_vk_instance, "vkGetDeviceProcAddr"));
     m_vk_loader = vk::DispatchLoaderDynamic(m_vk_instance, vkGetInstanceProcAddr);
@@ -128,13 +135,16 @@ Renderer::Renderer(
     m_current_draw_state.frame_index = 0;
     m_current_draw_state.image_index = 0;
     m_current_draw_state.command_buffer = nullptr;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 vk::PipelineLayout Renderer::create_vk_pipeline_layout(
     const vk::DispatchLoaderDynamic& loader, const std::vector<Handle>& layouts) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<vk::DescriptorSetLayout> vk_layouts;
     std::ranges::transform(layouts, std::back_inserter(vk_layouts), [&](const Handle handle) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return m_descriptor_set_layouts.at(handle);
     });
 
@@ -147,11 +157,13 @@ vk::PipelineLayout Renderer::create_vk_pipeline_layout(
     const vk::ResultValue<vk::PipelineLayout> pipeline_layout_result
         = m_vk_device.createPipelineLayout(pipeline_layout_info, nullptr, loader);
     MVE_ASSERT(pipeline_layout_result.result == vk::Result::eSuccess, "[Renderer] Failed to create pipline layout")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return pipeline_layout_result.value;
 }
 
 DepthImage Renderer::create_depth_image() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const vk::Format depth_format = find_depth_format(m_vk_loader, m_vk_physical_device);
 
     const Image depth_image = create_image(
@@ -167,12 +179,13 @@ DepthImage Renderer::create_depth_image() const
 
     const vk::ImageView depth_image_view = create_image_view(
         m_vk_loader, m_vk_device, depth_image.vk_handle, depth_format, vk::ImageAspectFlagBits::eDepth, 1);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { depth_image, depth_image_view };
 }
 
 Renderer::~Renderer()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 #ifdef MVE_ENABLE_VALIDATION
     cleanup_vk_debug_messenger();
 #endif
@@ -264,10 +277,12 @@ Renderer::~Renderer()
 
     m_vk_instance.destroy(m_vk_surface, nullptr, m_vk_loader);
     m_vk_instance.destroy(nullptr, m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::recreate_render_passes()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_vk_device.destroy(m_vk_render_pass, nullptr, m_vk_loader);
     m_vk_device.destroy(m_vk_render_pass_framebuffer, nullptr, m_vk_loader);
 
@@ -284,10 +299,12 @@ void Renderer::recreate_render_passes()
         m_vk_swapchain_image_format.format,
         find_depth_format(m_vk_loader, m_vk_physical_device),
         m_msaa_samples);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::recreate_graphics_pipelines()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for (std::optional<GraphicsPipelineImpl>& pipeline : m_graphics_pipelines) {
         if (pipeline.has_value()) {
             m_vk_device.destroy(pipeline->pipeline, nullptr, m_vk_loader);
@@ -304,10 +321,12 @@ void Renderer::recreate_graphics_pipelines()
                 pipeline->depth_test);
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::recreate_swapchain(const Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     nnm::Vector2i window_size;
     glfwGetFramebufferSize(window.glfw_handle(), &window_size.x, &window_size.y);
 
@@ -361,10 +380,12 @@ void Renderer::recreate_swapchain(const Window& window)
         m_msaa_samples);
 
     recreate_framebuffers();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::cleanup_vk_swapchain() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_vk_device.destroy(m_color_image.vk_image_view, nullptr, m_vk_loader);
     vmaDestroyImage(m_vma_allocator, m_color_image.image.vk_handle, m_color_image.image.vma_allocation);
 
@@ -378,28 +399,34 @@ void Renderer::cleanup_vk_swapchain() const
         m_vk_device.destroy(image_view, nullptr, m_vk_loader);
     }
     m_vk_device.destroy(m_vk_swapchain, nullptr, m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::cleanup_vk_debug_messenger() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
             vkGetInstanceProcAddr(m_vk_instance, "vkDestroyDebugUtilsMessengerEXT"));
         func != nullptr) {
         func(m_vk_instance, static_cast<VkDebugUtilsMessengerEXT>(m_vk_debug_utils_messenger), nullptr);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::destroy(VertexBuffer& vertex_buffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(vertex_buffer.is_valid(), "[Renderer] Attempted to destroy invalid vertex buffer")
-    log().debug("[Renderer] Destroyed vertex buffer with ID: {}", vertex_buffer.handle());
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Destroyed vertex buffer with ID: {} " + vertex_buffer.handle())
     const Handle handle = vertex_buffer.handle();
     vertex_buffer.invalidate();
     m_deferred_operations.emplace_back(DeferredDestroyVertexBuffer { handle });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::begin_render_pass_present() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // auto clear_color = vk::ClearValue(vk::ClearColorValue(std::array<float, 4> { 0.0f, 0.0f, 0.0f, 1.0f }));
 
     std::array<vk::ClearValue, 2> clear_values {};
@@ -431,10 +458,12 @@ void Renderer::begin_render_pass_present() const
     auto scissor = vk::Rect2D().setOffset({ 0, 0 }).setExtent(m_vk_swapchain_extent);
 
     m_current_draw_state.command_buffer.setScissor(0, { scissor }, m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::begin_render_pass_framebuffer(const Framebuffer& framebuffer) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     constexpr auto clear_color = vk::ClearColorValue(std::array { 142.0f / 255.0f, 186.0f / 255.0f, 1.0f, 1.0f });
 
     std::array<vk::ClearValue, 2> clear_values {};
@@ -466,10 +495,12 @@ void Renderer::begin_render_pass_framebuffer(const Framebuffer& framebuffer) con
     auto scissor = vk::Rect2D().setOffset({ 0, 0 }).setExtent(m_vk_swapchain_extent);
 
     m_current_draw_state.command_buffer.setScissor(0, { scissor }, m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::begin_frame(const Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(!m_current_draw_state.is_drawing, "[Renderer] Already drawing")
 
     m_current_draw_state.is_drawing = true;
@@ -484,6 +515,7 @@ void Renderer::begin_frame(const Window& window)
     if (acquire_result.result == vk::Result::eSuboptimalKHR) {
         recreate_swapchain(window);
         m_current_draw_state.is_drawing = false;
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return;
     }
     MVE_ASSERT(acquire_result.result == vk::Result::eSuccess, "[Renderer] Failed to acquire swapchain image")
@@ -612,6 +644,7 @@ void Renderer::begin_frame(const Window& window)
                 std::vector<DescriptorSetImpl> sets_to_delete;
                 std::ranges::transform(
                     std::as_const(m_frames_in_flight), std::back_inserter(sets_to_delete), [&](const FrameInFlight& f) {
+                        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                         return *f.descriptor_sets.at(deferred_destroy_descriptor_set->handle);
                     });
                 // ReSharper disable once CppUseStructuredBinding
@@ -798,10 +831,12 @@ void Renderer::begin_frame(const Window& window)
         }
     }
     std::swap(temp_deferred, m_deferred_operations);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::end_frame(const Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const vk::Result end_result = m_current_draw_state.command_buffer.end(m_vk_loader);
     MVE_ASSERT(end_result == vk::Result::eSuccess, "[Renderer] Failed to end command buffer recording")
 
@@ -843,6 +878,7 @@ void Renderer::end_frame(const Window& window)
     m_current_draw_state.frame_index = (m_current_draw_state.frame_index + 1) % c_frames_in_flight;
 
     m_current_draw_state.is_drawing = false;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 nnm::Vector2i Renderer::extent() const
@@ -852,11 +888,13 @@ nnm::Vector2i Renderer::extent() const
 
 void Renderer::wait_ready() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // ReSharper disable once CppUseStructuredBinding
     const FrameInFlight& frame = m_frames_in_flight[m_current_draw_state.frame_index];
     const vk::Result fence_wait_result
         = m_vk_device.waitForFences(frame.in_flight_fence, true, UINT64_MAX, m_vk_loader);
     MVE_ASSERT(fence_wait_result == vk::Result::eSuccess, "[Renderer] Failed waiting for frame (fences)")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::update_uniform(
@@ -866,9 +904,11 @@ void Renderer::update_uniform(
     const size_t size,
     const uint32_t frame_index) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // ReSharper disable once CppUseStructuredBinding
     const UniformBufferImpl& buffer = *m_frames_in_flight.at(frame_index).uniform_buffers.at(handle);
     memcpy(&buffer.mapped_ptr[location.value()], data_ptr, size);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 Handle Renderer::create_descriptor_set_layout(
@@ -877,6 +917,7 @@ Handle Renderer::create_descriptor_set_layout(
     const Shader& vertex_shader,
     const Shader& fragment_shader)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<vk::DescriptorSetLayoutBinding> bindings;
     if (vertex_shader.has_descriptor_set(set)) {
         for (const ShaderDescriptorSet& vertex_set = vertex_shader.descriptor_set(set);
@@ -933,15 +974,15 @@ Handle Renderer::create_descriptor_set_layout(
     Handle handle = m_resource_handle_count;
     m_descriptor_set_layouts.insert({ handle, vk_layout });
     m_resource_handle_count++;
-
-    log().debug("[Renderer] Descriptor set layout created with ID: {}", handle);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Descriptor set layout created with ID: {}" + handle)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return handle;
 }
 
 Handle Renderer::create_graphics_pipeline_layout(
     const vk::DispatchLoaderDynamic& loader, const Shader& vertex_shader, const Shader& fragment_shader)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<Handle> layouts;
     std::unordered_map<Handle, Handle> descriptor_set_layouts;
 
@@ -969,29 +1010,34 @@ Handle Renderer::create_graphics_pipeline_layout(
     m_graphics_pipeline_layouts[*id]
         = { .vk_handle = vk_layout, .descriptor_set_layouts = std::move(descriptor_set_layouts) };
 
-    log().debug("[Renderer] Graphics pipeline layout created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Graphics pipeline layout created with ID: {}" + *id)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return *id;
 }
 
 void Renderer::resize(const Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     recreate_swapchain(window);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::write_descriptor_binding(
     const DescriptorSet& descriptor_set, const ShaderDescriptorBinding& descriptor_binding, const Texture& texture)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_deferred_operations.emplace_back(DeferredDescriptorWriteData {
         .counter = c_frames_in_flight,
         .data_type = DescriptorBindingType::texture,
         .data_handle = texture.handle(),
         .descriptor_handle = descriptor_set.handle(),
         .binding = descriptor_binding.binding() });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 VertexBuffer Renderer::create_vertex_buffer(const VertexData& vertex_data)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const size_t buffer_size = get_vertex_layout_bytes(vertex_data.layout()) * vertex_data.vertex_count();
 
     MVE_VAL_ASSERT(buffer_size != 0, "[Renderer] Attempt to allocate empty vertex buffer")
@@ -1029,21 +1075,23 @@ VertexBuffer Renderer::create_vertex_buffer(const VertexData& vertex_data)
         m_vertex_buffers.emplace_back();
     }
     m_vertex_buffers[*id] = { buffer, vertex_data.vertex_count() };
-
-    log().debug("[Renderer] Vertex buffer created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Vertex buffer created with ID: {}" + *id)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, *id };
 }
 
 void Renderer::bind_vertex_buffer(const VertexBuffer& vertex_buffer) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     constexpr vk::DeviceSize offset = 0;
     m_current_draw_state.command_buffer.bindVertexBuffers(
         0, 1, &m_vertex_buffers[vertex_buffer.handle()]->buffer.vk_handle, &offset, m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 IndexBuffer Renderer::create_index_buffer(const std::vector<uint32_t>& indices)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const size_t buffer_size = sizeof(uint32_t) * indices.size();
 
     const Buffer staging_buffer = create_buffer(
@@ -1080,17 +1128,18 @@ IndexBuffer Renderer::create_index_buffer(const std::vector<uint32_t>& indices)
         m_index_buffers.emplace_back();
     }
     m_index_buffers[*id] = { buffer, indices.size() };
-
-    log().debug("[Renderer] Index buffer created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Index buffer created with ID: {}" + *id)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, *id };
 }
 
 void Renderer::draw_index_buffer(const IndexBuffer& index_buffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto& [buffer, index_count] = *m_index_buffers[index_buffer.handle()];
     m_current_draw_state.command_buffer.bindIndexBuffer(buffer.vk_handle, 0, vk::IndexType::eUint32, m_vk_loader);
     m_current_draw_state.command_buffer.drawIndexed(index_count, 1, 0, 0, 0, m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 GraphicsPipeline Renderer::create_graphics_pipeline(
@@ -1099,6 +1148,7 @@ GraphicsPipeline Renderer::create_graphics_pipeline(
     const VertexLayout& vertex_layout,
     const bool depth_test)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const Handle layout = create_graphics_pipeline_layout(m_vk_loader, vertex_shader, fragment_shader);
 
     const vk::Pipeline vk_pipeline = create_vk_graphics_pipeline(
@@ -1132,15 +1182,15 @@ GraphicsPipeline Renderer::create_graphics_pipeline(
         .vertex_layout = vertex_layout,
         .depth_test = depth_test
     };
-
-    log().debug("[Renderer] Graphics pipeline created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Graphics pipeline created with ID: {}" + *id)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, *id };
 }
 
 DescriptorSet Renderer::create_descriptor_set(
     const GraphicsPipeline& graphics_pipeline, const ShaderDescriptorSet& descriptor_set)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<DescriptorSetImpl> descriptor_sets;
     descriptor_sets.reserve(c_frames_in_flight);
 
@@ -1175,19 +1225,22 @@ DescriptorSet Renderer::create_descriptor_set(
         i++;
     }
 
-    log().debug("[Renderer] Descriptor set created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Descriptor set created with ID: {}" + *id)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, *id };
 }
 
 void Renderer::bind_graphics_pipeline(const GraphicsPipeline& graphics_pipeline)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (m_current_draw_state.current_pipeline == graphics_pipeline.handle()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return;
     }
     m_current_draw_state.command_buffer.bindPipeline(
         vk::PipelineBindPoint::eGraphics, m_graphics_pipelines.at(graphics_pipeline.handle())->pipeline, m_vk_loader);
     m_current_draw_state.current_pipeline = graphics_pipeline.handle();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::write_descriptor_binding(
@@ -1195,21 +1248,26 @@ void Renderer::write_descriptor_binding(
     const ShaderDescriptorBinding& descriptor_binding,
     const UniformBuffer& uniform_buffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_deferred_operations.emplace_back(DeferredDescriptorWriteData {
         .counter = c_frames_in_flight,
         .data_type = DescriptorBindingType::uniform_buffer,
         .data_handle = uniform_buffer.handle(),
         .descriptor_handle = descriptor_set.handle(),
         .binding = descriptor_binding.binding() });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::bind_descriptor_set(DescriptorSet& descriptor_set) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     bind_descriptor_sets(1, { &descriptor_set, nullptr, nullptr, nullptr });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 UniformBuffer Renderer::create_uniform_buffer(const ShaderDescriptorBinding& descriptor_binding)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(
         descriptor_binding.type() == ShaderDescriptorType::uniform_buffer,
         "[Renderer] Failed to create uniform buffer as binding is not of type uniform buffer")
@@ -1247,47 +1305,58 @@ UniformBuffer Renderer::create_uniform_buffer(const ShaderDescriptorBinding& des
         frame.uniform_buffers[*id] = { buffer, struct_size, static_cast<std::byte*>(ptr) };
         i++;
     }
-
-    log().debug("[Renderer] Uniform buffer created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Uniform buffer created with ID: {}" + *id)
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, *id };
 }
 
 void Renderer::update_uniform(
     UniformBuffer& uniform_buffer, const UniformLocation location, const float value, const bool persist)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_uniform<float>(uniform_buffer, location, value, persist);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Renderer::update_uniform(
     UniformBuffer& uniform_buffer, const UniformLocation location, const nnm::Vector2f value, const bool persist)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_uniform<nnm::Vector2f>(uniform_buffer, location, value, persist);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Renderer::update_uniform(
     UniformBuffer& uniform_buffer, const UniformLocation location, const nnm::Vector3f value, const bool persist)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_uniform<nnm::Vector3f>(uniform_buffer, location, value, persist);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Renderer::update_uniform(
     UniformBuffer& uniform_buffer, const UniformLocation location, const nnm::Vector4f value, const bool persist)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_uniform<nnm::Vector4f>(uniform_buffer, location, value, persist);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Renderer::update_uniform(
     UniformBuffer& uniform_buffer, const UniformLocation location, const nnm::Matrix3f& value, const bool persist)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_uniform<nnm::Matrix3f>(uniform_buffer, location, value, persist);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Renderer::update_uniform(
     UniformBuffer& uniform_buffer, const UniformLocation location, const nnm::Matrix4f& value, const bool persist)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_uniform<nnm::Matrix4f>(uniform_buffer, location, value, persist);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::destroy(Texture& texture)
 {
     MVE_VAL_ASSERT(texture.is_valid(), "[Renderer] Attempted to destroy invalid texture")
-    log().debug("[Renderer] Destroyed texture with ID: {}", texture.handle());
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Destroyed texture with ID: {}" + texture.handle())
     const Handle handle = texture.handle();
     texture.invalidate();
     m_deferred_operations.emplace_back(DeferredDestroyTexture { handle });
@@ -1297,6 +1366,7 @@ void Renderer::destroy(Texture& texture)
 Texture Renderer::create_texture(
     const TextureFormat format, const uint32_t width, const uint32_t height, const std::byte* data)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(width != 0 && height != 0, "[Renderer] Attempt to create texture with 0 width or height")
     constexpr uint32_t mip_levels = 1;
 
@@ -1359,13 +1429,14 @@ Texture Renderer::create_texture(
     m_resource_handle_count++;
     m_textures.insert({ handle, texture });
 
-    log().debug("[Renderer] Texture created with ID: {}", handle);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Texture created with ID: {}" + handle);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, handle };
 }
 
 Texture Renderer::create_texture(const std::filesystem::path& path)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     int width;
     int height;
     int channels;
@@ -1373,7 +1444,7 @@ Texture Renderer::create_texture(const std::filesystem::path& path)
     const stbi_uc* pixels = stbi_load(path_string.c_str(), &width, &height, &channels, STBI_rgb_alpha);
     // vk::DeviceSize size = width * height * 4;
     MVE_ASSERT(pixels != nullptr, "[Renderer] Failed to load texture image")
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return create_texture(
         TextureFormat::rgba,
         static_cast<uint32_t>(width),
@@ -1384,6 +1455,7 @@ Texture Renderer::create_texture(const std::filesystem::path& path)
 Texture Renderer::create_texture(
     const Image& image, const vk::ImageView image_view, const vk::Sampler sampler, const uint32_t mip_levels)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     TextureImpl texture {
         .image = image, .vk_image_view = image_view, .vk_sampler = sampler, .mip_levels = mip_levels
     };
@@ -1391,63 +1463,78 @@ Texture Renderer::create_texture(
     auto handle = m_resource_handle_count;
     m_resource_handle_count++;
     m_textures.insert({ handle, texture });
-
-    log().debug("[Renderer] Texture created with ID: {}", handle);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Texture created with ID: {}" + handle);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, handle };
 }
 
 void Renderer::draw_vertex_buffer(const VertexBuffer& vertex_buffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto& [buffer, vertex_count] = *m_vertex_buffers.at(vertex_buffer.handle());
     m_current_draw_state.command_buffer.bindVertexBuffers(0, buffer.vk_handle, { 0 });
     m_current_draw_state.command_buffer.draw(vertex_count, 1, 0, 0);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::destroy(DescriptorSet& descriptor_set)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(descriptor_set.is_valid(), "[Renderer] Attempted to destroy invalid descriptor set")
-    log().debug("[Renderer] Destroyed descriptor set with ID: {}", descriptor_set.handle());
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Destroyed descriptor set with ID: {}" + descriptor_set.handle());
+
     const Handle handle = descriptor_set.handle();
     descriptor_set.invalidate();
     m_deferred_operations.emplace_back(DeferredDestroyDescriptorSet { handle });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::destroy(GraphicsPipeline& graphics_pipeline)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(graphics_pipeline.is_valid(), "[Renderer] Attempted to destroy invalid graphics pipeline")
-    log().debug("[Renderer] Destroyed graphics pipeline with ID: {}", graphics_pipeline.handle());
+    LOGGER_THREAD_DEBUG(
+        LogLevel::INFO, "[Renderer] Destroyed graphics pipeline with ID: {}" + graphics_pipeline.handle());
+
     const Handle handle = graphics_pipeline.handle();
     graphics_pipeline.invalidate();
     m_deferred_operations.emplace_back(DeferredDestroyGraphicsPipeline { handle });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::destroy(UniformBuffer& uniform_buffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(uniform_buffer.is_valid(), "[Renderer] Attempted to destroy invalid uniform buffer")
-    log().debug("[Renderer] Destroyed uniform buffer with ID: {}", uniform_buffer.handle());
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Destroyed uniform buffer with ID: {}" + uniform_buffer.handle());
     uniform_buffer.invalidate();
     const Handle handle = uniform_buffer.handle();
     m_deferred_operations.emplace_back(DeferredDestroyUniformBuffer { handle });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::destroy(IndexBuffer& index_buffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(index_buffer.is_valid(), "[Renderer] Attempted to destroy invalid index buffer")
-    log().debug("[Renderer] Destroyed index buffer with ID: {}", index_buffer.handle());
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Destroyed index buffer with ID: {}" + index_buffer.handle());
     const Handle handle = index_buffer.handle();
     index_buffer.invalidate();
     m_deferred_operations.emplace_back(DeferredDestroyIndexBuffer { handle });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::bind_descriptor_sets(const DescriptorSet& descriptor_set_a, const DescriptorSet& descriptor_set_b) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     bind_descriptor_sets(2, { &descriptor_set_a, &descriptor_set_b, nullptr, nullptr });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::bind_descriptor_sets(
     const uint32_t num, const std::array<const DescriptorSet*, 4>& descriptor_sets) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::array<vk::DescriptorSet, 4> sets;
     for (uint32_t i = 0; i < num; i++) {
         sets[i] = m_frames_in_flight[m_current_draw_state.frame_index]
@@ -1464,14 +1551,18 @@ void Renderer::bind_descriptor_sets(
         0,
         nullptr,
         m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Renderer::end_render_pass() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_current_draw_state.command_buffer.endRenderPass(m_vk_loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 Framebuffer Renderer::create_framebuffer(std::function<void()> callback)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::optional<Handle> id;
     for (Handle i = 0; i < m_framebuffers.size(); i++) {
         if (!m_framebuffers[i].has_value()) {
@@ -1484,21 +1575,23 @@ Framebuffer Renderer::create_framebuffer(std::function<void()> callback)
         m_framebuffers.emplace_back();
     }
     m_framebuffers[*id] = std::move(create_framebuffer_impl(m_vk_loader, callback));
-
-    log().debug("[Renderer] Framebuffer created with ID: {}", *id);
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Framebuffer created with ID: {}" + *id);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { *this, *id };
 }
 void Renderer::destroy(Framebuffer& framebuffer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MVE_VAL_ASSERT(framebuffer.is_valid(), "[Renderer] Attempted to destroy invalid framebuffer")
-    log().debug("[Renderer] Destroyed framebuffer with ID: {}", framebuffer.handle());
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] Destroyed framebuffer with ID: {}" + framebuffer.handle());
     const Handle handle = framebuffer.handle();
     framebuffer.invalidate();
     m_deferred_operations.emplace_back(DeferredDestroyFramebuffer { handle });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Renderer::recreate_framebuffers()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<std::pair<Handle, std::optional<std::function<void()>>>> ids_to_recreate;
     for (Handle i = 0; i < m_framebuffers.size(); i++) {
         if (m_framebuffers[i].has_value()) {
@@ -1514,11 +1607,13 @@ void Renderer::recreate_framebuffers()
     for (const std::optional<FramebufferImpl>& framebuffer : m_framebuffers) {
         std::invoke(*framebuffer->callback);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 FramebufferImpl Renderer::create_framebuffer_impl(
     const vk::DispatchLoaderDynamic& loader, std::optional<std::function<void()>> callback)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto [image, vk_image_view] = create_color_image(
         m_vk_loader,
         m_vk_device,
@@ -1565,7 +1660,7 @@ FramebufferImpl Renderer::create_framebuffer_impl(
         .callback = std::move(callback),
         .size = { static_cast<int>(m_vk_swapchain_extent.width), static_cast<int>(m_vk_swapchain_extent.height) }
     };
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return framebuffer_impl;
 }
 
@@ -1596,6 +1691,7 @@ Msaa Renderer::max_msaa_samples() const
 
 void Renderer::set_msaa_samples(const Window& window, const Msaa samples)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const vk::Result wait_result = m_vk_device.waitIdle(m_vk_loader);
     MVE_ASSERT(wait_result == vk::Result::eSuccess, "[Renderer] Failed to wait idle for setting MSAA")
     vk::SampleCountFlagBits vk_samples {};
@@ -1626,6 +1722,7 @@ void Renderer::set_msaa_samples(const Window& window, const Msaa samples)
     recreate_render_passes();
     recreate_graphics_pipelines();
     recreate_swapchain(window);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 Msaa Renderer::current_msaa_samples() const

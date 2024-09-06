@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+#include <game_performance_profiler.hpp>
+
 namespace util {
 
 FixedLoop::FixedLoop(const float rate)
@@ -15,6 +17,7 @@ FixedLoop::FixedLoop(const float rate)
 
 void FixedLoop::update(const int max_loops, std::optional<std::function<void()>> callback)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     update_state();
     int loop_count = 0;
     while (m_is_ready) {
@@ -27,6 +30,7 @@ void FixedLoop::update(const int max_loops, std::optional<std::function<void()>>
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void FixedLoop::set_rate(const float rate)
@@ -48,6 +52,7 @@ void FixedLoop::reset()
 
 void FixedLoop::update_state()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_start = std::chrono::steady_clock::now();
     m_delta += std::chrono::duration_cast<std::chrono::nanoseconds>(m_start - m_end).count();
     m_end = m_start;
@@ -59,6 +64,7 @@ void FixedLoop::update_state()
         m_is_ready = false;
     }
     m_blend = static_cast<double>(m_delta) / static_cast<double>(m_rate);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 }

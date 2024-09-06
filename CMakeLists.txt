@@ -4,6 +4,10 @@ project(voxelverse)
 
 set(CMAKE_CXX_STANDARD 20)
 
+if(PERFORMANCE_MONITOR)
+    add_definitions(-DPERFORMANCE_MONITOR)
+endif()
+
 function(add_shaders TARGET)
     find_program(GLSLANGVALIDATOR glslangValidator)
     foreach (SHADER ${ARGN})
@@ -49,35 +53,8 @@ set(LIB_SOURCE_FILES
 
 add_subdirectory(lib/mve)
 
-set(SOURCE_FILES
-        src/client/app.cpp
-        src/common/logger.cpp
-        src/client/util.cpp
-        src/common/fixed_loop.cpp
-        src/client/chunk_mesh.cpp
-        src/client/chunk_data.cpp
-        src/client/world_generator.cpp
-        src/client/world_data.cpp
-        src/client/world_renderer.cpp
-        src/client/player.cpp
-        src/client/ui_pipeline.cpp
-        src/client/wire_box_mesh.cpp
-        src/client/world.cpp
-        src/client/save_file.cpp
-        src/client/ui/nine_patch.cpp
-        src/client/ui/hotbar.cpp
-        src/client/ui/crosshair.cpp
-        src/client/text_pipeline.cpp
-        src/client/ui/debug_overlay.cpp
-        src/client/ui/hud.cpp
-        src/client/ui/console.cpp
-        src/client/ui/button.cpp
-        src/client/ui/pause_menu.cpp
-        src/client/chunk_controller.cpp
-        src/client/lighting.cpp
-        src/client/ui/options_menu.cpp
-        src/client/options.cpp
-        src/server/server.cpp)
+file(GLOB_RECURSE SOURCE_FILES "src/**/*.cpp"
+"${CMAKE_SOURCE_DIR}/external/ThreadedLoggerForCPPV0.5.2/src/LoggerThread.cpp")
 
 set(LIBS
         enet
@@ -89,16 +66,18 @@ if (WIN32)
 endif ()
 
 set(LIB_INCLUDES
-        external/spdlog-1.14.1/include
-        external/whereami-ba364cd/include
-        external/tinyobjloader-45f683c/include
-        external/fast-noise-lite-1.1.1/include
-        external/cereal-1.3.2/include
-        external/lz4-1.9.4/include
-        external/thread-pool-4.1.0/include
-        external/nlohmann-json-3.11.3/include
-        external/enet-1.3.18/include)
-
+"${CMAKE_SOURCE_DIR}/external/game_performance_profiler"
+"${CMAKE_SOURCE_DIR}/external/spdlog-1.14.1/include"
+"${CMAKE_SOURCE_DIR}/external/whereami-ba364cd/include"
+"${CMAKE_SOURCE_DIR}/external/tinyobjloader-45f683c/include"
+"${CMAKE_SOURCE_DIR}/external/fast-noise-lite-1.1.1/include"
+"${CMAKE_SOURCE_DIR}/external/cereal-1.3.2/include"
+"${CMAKE_SOURCE_DIR}/external/lz4-1.9.4/include"
+"${CMAKE_SOURCE_DIR}/external/thread-pool-4.1.0/include"
+"${CMAKE_SOURCE_DIR}/external/nlohmann-json-3.11.3/include"
+"${CMAKE_SOURCE_DIR}/external/enet-1.3.18/include"
+"${CMAKE_SOURCE_DIR}/external/ThreadedLoggerForCPPV0.5.2/libs/include")
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 add_executable(${PROJECT_NAME})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC RES_PATH="./res")

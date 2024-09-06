@@ -3,8 +3,7 @@
 #include "common.hpp"
 
 #include <nnm/nnm.hpp>
-
-#include "../common/logger.hpp"
+#include <game_performance_profiler.hpp>
 
 UIPipeline::UIPipeline(mve::Renderer& renderer)
     : m_renderer(&renderer)
@@ -38,6 +37,7 @@ void UIPipeline::resize()
 
 void UIPipeline::update_framebuffer_texture(const mve::Texture& texture, const nnm::Vector2i size)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_global_descriptor_set.write_binding(m_fragment_shader.descriptor_set(0).binding(1), texture);
     mve::VertexData world_data(vertex_layout());
     world_data.push_back(nnm::Vector3(0.0f, 0.0f, 0.0f));
@@ -69,6 +69,7 @@ void UIPipeline::update_framebuffer_texture(const mve::Texture& texture, const n
     }
     m_global_ubo.update(
         m_vertex_shader.descriptor_set(0).binding(0).member("world_size").location(), nnm::Vector2f(size));
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 UIUniformData UIPipeline::create_uniform_data() const
@@ -89,17 +90,21 @@ void UIPipeline::draw(
     const mve::VertexBuffer& vertex_buffer,
     const mve::IndexBuffer& index_buffer) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_renderer->bind_graphics_pipeline(m_graphics_pipeline);
     m_renderer->bind_descriptor_sets(m_global_descriptor_set, descriptor_set);
     m_renderer->bind_vertex_buffer(vertex_buffer);
     m_renderer->draw_index_buffer(index_buffer);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void UIPipeline::draw_world() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_renderer->bind_graphics_pipeline(m_graphics_pipeline);
     if (m_world.has_value()) {
         m_renderer->bind_descriptor_sets(m_global_descriptor_set, m_world->descriptor_set);
         m_renderer->bind_vertex_buffer(m_world->vertex_buffer);
         m_renderer->draw_index_buffer(m_world->index_buffer);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

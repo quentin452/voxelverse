@@ -2,9 +2,43 @@
 
 #include <fstream>
 
-#include "../common/logger.hpp"
 #include "options.hpp"
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+#include <game_performance_profiler.hpp>
 
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
+std::string _exe_game = "VoxelVerse";
+
+void InitThreadedLoggerForCPP(std::string& ProjectDirectory, std::string& LogFileName, std::string& GameSaveFolder)
+{
+#pragma warning(push)
+#pragma warning(disable : 4996) // Disable warning for getenv
+#ifdef _WIN32
+    LoggerGlobals::UsernameDirectory = std::getenv("USERNAME");
+#else
+    LoggerGlobals::UsernameDirectory = std::getenv("USER");
+#endif
+#pragma warning(pop)
+
+    // this is the folder that contains your src files like main.cpp
+    LoggerGlobals::SrcProjectDirectory = ProjectDirectory;
+    // Create Log File and folder
+    LoggerGlobals::LogFolderPath
+        = "C:\\Users\\" + LoggerGlobals::UsernameDirectory + "\\." + GameSaveFolder + "\\logging\\";
+    LoggerGlobals::LogFilePath = "C:\\Users\\" + LoggerGlobals::UsernameDirectory + "\\." + GameSaveFolder
+        + "\\logging\\" + LogFileName + ".log";
+    LoggerGlobals::LogFolderBackupPath
+        = "C:\\Users\\" + LoggerGlobals::UsernameDirectory + "\\." + GameSaveFolder + "\\logging\\LogBackup";
+    LoggerGlobals::LogFileBackupPath = "C:\\Users\\" + LoggerGlobals::UsernameDirectory + "\\." + GameSaveFolder
+        + "\\logging\\LogBackup\\" + LogFileName + "-";
+
+    LoggerThread::GetLoggerThread().StartLoggerThread(
+        LoggerGlobals::LogFolderPath,
+        LoggerGlobals::LogFilePath,
+        LoggerGlobals::LogFolderBackupPath,
+        LoggerGlobals::LogFileBackupPath);
+}
 namespace app {
 
 App::App()
@@ -27,7 +61,7 @@ App::App()
     , m_fixed_loop(60.0f)
     , m_begin_time(std::chrono::high_resolution_clock::now())
 {
-    LOG->set_level(spdlog::level::info);
+    InitThreadedLoggerForCPP(_exe_game, _exe_game, _exe_game);
     m_window.set_min_size({ 800, 600 });
     m_window.disable_cursor();
 
@@ -59,11 +93,11 @@ App::App()
     VV_REL_ASSERT(peer != nullptr, "[App] No available peers for initiating an ENet connection");
     ENetEvent event;
     if (enet_host_service(m_client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-        LOG->info("[App] Connected to server");
+        LOGGER_THREAD(LogLevel::INFO, "[App] Connected to server")
     }
     else {
         enet_peer_reset(peer);
-        LOG->error("[App] Failed to connect to server;");
+        LOGGER_THREAD(LogLevel::ERRORING, "[App] Failed to connect to server;")
     }
     enet_host_flush(m_client);
 }
@@ -73,10 +107,12 @@ App::~App()
     enet_host_flush(m_client);
     enet_host_destroy(m_client);
     enet_deinitialize();
+    gamePerformanceProfiler.print();
 }
 
 void App::draw()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_renderer.begin_frame(m_window);
 
     m_renderer.begin_render_pass_framebuffer(m_world_framebuffer);
@@ -92,10 +128,12 @@ void App::draw()
     m_renderer.end_render_pass();
 
     m_renderer.end_frame(m_window);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void App::main_loop()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     while (!m_window.should_close() && !m_world.should_exit()) {
         handle_networking();
 
@@ -126,29 +164,32 @@ void App::main_loop()
         }
         m_current_frame_count++;
     }
-
+    LoggerThread::GetLoggerThread().ExitLoggerThread();
     const Options options { .fullscreen = m_window.is_fullscreen(), .msaa = m_renderer.current_msaa_samples() };
     set_options(options);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void App::handle_networking() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     ENetEvent event;
     std::string buffer;
     while (enet_host_service(m_client, &event, 0) > 0) {
         switch (event.type) {
         case ENET_EVENT_TYPE_DISCONNECT:
-            LOG->info("[App] Disconnected from server");
+            LOGGER_THREAD(LogLevel::INFO, "[App] Disconnected from server")
             break;
         case ENET_EVENT_TYPE_RECEIVE:
             buffer = std::string(event.packet->data, event.packet->data + event.packet->dataLength);
-            LOG->info("[App] Receieved packet: {}", buffer);
+            LOGGER_THREAD(LogLevel::INFO, "[App] Receieved packet: {}" + buffer)
             enet_packet_destroy(event.packet);
             break;
         default:
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 }

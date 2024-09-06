@@ -5,6 +5,8 @@
 #include <mve/common.hpp>
 #include <nnm/nnm.hpp>
 
+#include <game_performance_profiler.hpp>
+
 namespace mve {
 
 Window::Window(const std::string& title, const nnm::Vector2i size, const bool resizable)
@@ -73,6 +75,8 @@ bool Window::should_close() const
 
 void Window::poll_events()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     if (m_event_waiting) {
         glfwWaitEvents();
     }
@@ -112,6 +116,7 @@ void Window::poll_events()
 
     std::swap(m_current_keys_repeated, m_keys_repeated);
     m_current_keys_repeated.clear();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 nnm::Vector2f Window::mouse_scroll() const
@@ -136,6 +141,8 @@ void Window::remove_resize_callback()
 
 nnm::Vector2f Window::get_cursor_pos(const bool clamped_to_window) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     double glfw_cursor_pos[2];
     glfwGetCursorPos(m_glfw_window.get(), &glfw_cursor_pos[0], &glfw_cursor_pos[1]);
     nnm::Vector2f mouse_pos_val;
@@ -144,15 +151,21 @@ nnm::Vector2f Window::get_cursor_pos(const bool clamped_to_window) const
         mouse_pos_val.x = nnm::clamp(static_cast<float>(glfw_cursor_pos[0]), 0.0f, static_cast<float>(window_size.x));
         mouse_pos_val.y = nnm::clamp(static_cast<float>(glfw_cursor_pos[1]), 0.0f, static_cast<float>(window_size.y));
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     return { mouse_pos_val };
 }
 
 Monitor Window::current_monitor() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     int monitor_count;
     GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
 
     if (m_fullscreen) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
         return Monitor(glfwGetWindowMonitor(m_glfw_window.get()));
     }
     nnm::Vector2i pos;
@@ -166,10 +179,13 @@ Monitor Window::current_monitor() const
         glfwGetMonitorWorkarea(monitor, &workarea_pos.x, &workarea_pos.y, &workarea_size.x, &workarea_size.y);
         if (pos.x >= workarea_pos.x && pos.x <= workarea_pos.x + workarea_size.x && pos.y >= workarea_pos.y
             && pos.y <= workarea_pos.y + workarea_size.y) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
             return Monitor(monitor);
         }
     }
     MVE_ASSERT(false, "[Window] Failed to get current monitor")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 bool Window::is_fullscreen() const

@@ -1,11 +1,11 @@
 #include "world.hpp"
 
-#include "../common/logger.hpp"
 #include "chunk_data.hpp"
 #include "common.hpp"
 #include "lighting.hpp"
 #include "ui_pipeline.hpp"
 #include "world_data.hpp"
+#include <game_performance_profiler.hpp>
 
 World::World(mve::Renderer& renderer, UIPipeline& ui_pipeline, TextPipeline& text_pipeline, const int render_distance)
     : m_world_renderer(renderer)
@@ -24,11 +24,14 @@ World::World(mve::Renderer& renderer, UIPipeline& ui_pipeline, TextPipeline& tex
 
 void World::fixed_update(const mve::Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_player.fixed_update(window, m_world_data, m_focus == FocusState::world);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 std::vector<nnm::Vector3i> ray_blocks(nnm::Vector3f start, const nnm::Vector3f end)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector3f delta = end - start;
     const int step
         = static_cast<int>(nnm::ceil(nnm::max(nnm::abs(delta.x), nnm::max(nnm::abs(delta.y), nnm::abs(delta.z)))));
@@ -53,8 +56,10 @@ std::vector<nnm::Vector3i> ray_blocks(nnm::Vector3f start, const nnm::Vector3f e
     blocks.reserve(blocks.size());
     std::ranges::copy(std::as_const(blocks_set), std::back_inserter(blocks));
     std::ranges::sort(blocks, [start](const nnm::Vector3i& a, const nnm::Vector3i& b) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return start.distance_sqrd(nnm::Vector3f(a)) < start.distance_sqrd(nnm::Vector3f(b));
     });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return blocks;
 }
 
@@ -72,6 +77,7 @@ struct RayCollision {
 
 RayCollision ray_box_collision(Ray ray, const BoundingBox& box)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const bool inside = ray.position.x > box.min.x && ray.position.x < box.max.x && ray.position.y > box.min.y
         && ray.position.y < box.max.y && ray.position.z > box.min.z && ray.position.z < box.max.z;
 
@@ -111,12 +117,14 @@ RayCollision ray_box_collision(Ray ray, const BoundingBox& box)
         collision.distance *= -1.0f;
         collision.normal = -collision.normal;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return collision;
 }
 
 void trigger_place_block(
     const Player& camera, ChunkController& chunk_controller, WorldData& world_data, const uint8_t block_type)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const std::vector<nnm::Vector3i> blocks
         = ray_blocks(camera.position(), camera.position() + camera.direction() * 10.0f);
     const Ray ray { camera.position(), camera.direction().normalize() };
@@ -151,10 +159,12 @@ void trigger_place_block(
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void trigger_break_block(const Player& camera, ChunkController& chunk_controller, WorldData& world_data)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const std::vector<nnm::Vector3i> blocks
         = ray_blocks(camera.position(), camera.position() + camera.direction() * 10.0f);
     const Ray ray { camera.position(), camera.direction().normalize() };
@@ -177,10 +187,12 @@ void trigger_break_block(const Player& camera, ChunkController& chunk_controller
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void World::update(mve::Window& window, const float blend, mve::Renderer& renderer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (window.is_key_pressed(mve::Key::f3)) {
         m_hud.toggle_debug();
     }
@@ -235,21 +247,26 @@ void World::update(mve::Window& window, const float blend, mve::Renderer& render
 
     m_chunk_controller.update(
         m_world_data, m_world_generator, m_world_renderer, chunk_pos_from_block_pos(m_player.block_position()));
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void World::resize(const nnm::Vector2i extent)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_world_renderer.resize();
     m_hud.resize(extent);
     m_pause_menu.resize(extent);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void World::draw()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_world_renderer.draw(m_player);
     m_hud.draw();
     if (m_focus == FocusState::pause) {
         m_pause_menu.draw();
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 nnm::Vector3i World::player_block_pos() const
 {
@@ -268,6 +285,7 @@ std::optional<const ChunkData*> World::chunk_data_at(const nnm::Vector3i chunk_p
 }
 void World::update_world(mve::Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (window.is_key_pressed(mve::Key::escape)) {
         m_focus = FocusState::pause;
         window.enable_cursor();
@@ -355,4 +373,5 @@ void World::update_world(mve::Window& window)
         window.enable_cursor();
         m_hud.enable_console_cursor();
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

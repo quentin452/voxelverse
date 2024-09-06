@@ -6,37 +6,36 @@
 #include <mve/detail/defs.hpp>
 #include <mve/shader.hpp>
 
-#include "logger.hpp"
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+
+#include <game_performance_profiler.hpp>
 
 namespace mve::detail {
 
 inline vk::SampleCountFlagBits get_max_sample_count(
     const vk::DispatchLoaderDynamic& loader, const vk::PhysicalDevice physical_device)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const vk::PhysicalDeviceProperties properties = physical_device.getProperties(loader);
-
     const vk::SampleCountFlags counts
         = properties.limits.framebufferColorSampleCounts & properties.limits.framebufferDepthSampleCounts;
-
-    if (counts & vk::SampleCountFlagBits::e64) {
-        return vk::SampleCountFlagBits::e64;
-    }
-    if (counts & vk::SampleCountFlagBits::e32) {
-        return vk::SampleCountFlagBits::e32;
-    }
-    if (counts & vk::SampleCountFlagBits::e16) {
-        return vk::SampleCountFlagBits::e16;
-    }
-    if (counts & vk::SampleCountFlagBits::e8) {
-        return vk::SampleCountFlagBits::e8;
-    }
-    if (counts & vk::SampleCountFlagBits::e4) {
-        return vk::SampleCountFlagBits::e4;
-    }
-    if (counts & vk::SampleCountFlagBits::e2) {
-        return vk::SampleCountFlagBits::e2;
-    }
-    return vk::SampleCountFlagBits::e1;
+    vk::SampleCountFlagBits max_sample_count = vk::SampleCountFlagBits::e1;
+    if (counts & vk::SampleCountFlagBits::e64)
+        max_sample_count = vk::SampleCountFlagBits::e64;
+    else if (counts & vk::SampleCountFlagBits::e32)
+        max_sample_count = vk::SampleCountFlagBits::e32;
+    else if (counts & vk::SampleCountFlagBits::e16)
+        max_sample_count = vk::SampleCountFlagBits::e16;
+    else if (counts & vk::SampleCountFlagBits::e8)
+        max_sample_count = vk::SampleCountFlagBits::e8;
+    else if (counts & vk::SampleCountFlagBits::e4)
+        max_sample_count = vk::SampleCountFlagBits::e4;
+    else if (counts & vk::SampleCountFlagBits::e2)
+        max_sample_count = vk::SampleCountFlagBits::e2;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+    return max_sample_count;
 }
 
 inline bool has_stencil_component(const vk::Format format)
@@ -52,6 +51,7 @@ inline void cmd_copy_buffer_to_image(
     const uint32_t width,
     const uint32_t height)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto region
         = vk::BufferImageCopy()
               .setBufferOffset(0)
@@ -66,6 +66,7 @@ inline void cmd_copy_buffer_to_image(
               .setImageExtent(vk::Extent3D(width, height, 1));
 
     command_buffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, 1, &region, loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline vk::Sampler create_texture_sampler(
@@ -74,6 +75,7 @@ inline vk::Sampler create_texture_sampler(
     const vk::Device device,
     const uint32_t mip_levels)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto sampler_info
         = vk::SamplerCreateInfo()
               .setMagFilter(vk::Filter::eNearest)
@@ -96,6 +98,7 @@ inline vk::Sampler create_texture_sampler(
 
     const vk::ResultValue<vk::Sampler> sampler_result = device.createSampler(sampler_info, nullptr, loader);
     MVE_ASSERT(sampler_result.result == vk::Result::eSuccess, "[Renderer] Failed to create image sampler")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return sampler_result.value;
 }
 
@@ -108,6 +111,7 @@ inline void cmd_transition_image_layout(
     const vk::ImageLayout new_layout,
     const uint32_t mip_levels)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto barrier
         = vk::ImageMemoryBarrier()
               .setOldLayout(old_layout)
@@ -172,6 +176,7 @@ inline void cmd_transition_image_layout(
         1,
         &barrier,
         loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline vk::Format find_supported_format(
@@ -181,6 +186,7 @@ inline vk::Format find_supported_format(
     const vk::ImageTiling tiling,
     const vk::FormatFeatureFlags features)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for (const vk::Format format : formats) {
         if (vk::FormatProperties properties = physical_device.getFormatProperties(format, loader);
             (tiling == vk::ImageTiling::eLinear && (properties.linearTilingFeatures & features) == features)
@@ -189,6 +195,7 @@ inline vk::Format find_supported_format(
         }
     }
     MVE_ASSERT(false, "[Renderer] Failed to find supported format")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline vk::Format find_depth_format(const vk::DispatchLoaderDynamic& loader, const vk::PhysicalDevice physical_device)
@@ -213,6 +220,7 @@ inline Image create_image(
     const vk::ImageUsageFlags usage,
     const bool dedicated)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.imageType = VK_IMAGE_TYPE_2D;
@@ -237,6 +245,7 @@ inline Image create_image(
     VkImage image;
     VmaAllocation image_allocation;
     vmaCreateImage(allocator, &image_info, &vma_alloc_info, &image, &image_allocation, nullptr);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { vk::Image(image), image_allocation, width, height };
 }
 
@@ -248,6 +257,8 @@ inline vk::ImageView create_image_view(
     const vk::ImageAspectFlags aspect_flags,
     const uint32_t mip_levels)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     constexpr auto components
         = vk::ComponentMapping()
               .setR(vk::ComponentSwizzle::eIdentity)
@@ -273,12 +284,16 @@ inline vk::ImageView create_image_view(
 
     const vk::ResultValue<vk::ImageView> image_view_result = device.createImageView(view_info, nullptr, loader);
     MVE_ASSERT(image_view_result.result == vk::Result::eSuccess, "[Renderer] Failed to create image view")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     return image_view_result.value;
 }
 
 inline vk::CommandBuffer begin_single_submit(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const vk::CommandPool pool)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
+
     const auto command_buffer_alloc_info
         = vk::CommandBufferAllocateInfo()
               .setLevel(vk::CommandBufferLevel::ePrimary)
@@ -295,6 +310,7 @@ inline vk::CommandBuffer begin_single_submit(
 
     const vk::Result begin_result = command_buffer.begin(begin_info, loader);
     MVE_ASSERT(begin_result == vk::Result::eSuccess, "[Renderer] Failed to begin single submit buffer")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 
     return command_buffer;
 }
@@ -306,6 +322,7 @@ inline void end_single_submit(
     const vk::CommandBuffer command_buffer,
     const vk::Queue queue)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const vk::Result end_result = command_buffer.end(loader);
     MVE_ASSERT(end_result == vk::Result::eSuccess, "[Renderer] Failed to end single submit buffer")
 
@@ -317,6 +334,7 @@ inline void end_single_submit(
     MVE_ASSERT(wait_result == vk::Result::eSuccess, "[Renderer] Failed to wait for queue for single submit")
 
     device.freeCommandBuffers(pool, 1, &command_buffer, loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline RenderImage create_color_image(
@@ -327,6 +345,7 @@ inline RenderImage create_color_image(
     const vk::Format swapchain_format,
     const vk::SampleCountFlagBits samples)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const Image color_image = create_image(
         allocator,
         swapchain_extent.width,
@@ -340,7 +359,7 @@ inline RenderImage create_color_image(
 
     const vk::ImageView image_view = create_image_view(
         loader, device, color_image.vk_handle, swapchain_format, vk::ImageAspectFlagBits::eColor, 1);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { color_image, image_view };
 }
 
@@ -354,6 +373,7 @@ inline void cmd_generate_mipmaps(
     const uint32_t height,
     const uint32_t mip_levels)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // Check image format supports linear blitting
 #ifdef MVE_ENABLE_VALIDATION
     const vk::FormatProperties properties = physical_device.getFormatProperties(format, loader);
@@ -477,6 +497,7 @@ inline void cmd_generate_mipmaps(
         1,
         &barrier,
         loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline VkBool32 vk_debug_callback(
@@ -485,10 +506,8 @@ inline VkBool32 vk_debug_callback(
     const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
     [[maybe_unused]] void* user_data)
 {
-    if (msg_severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        log().warn("[Vulkan Debug] " + std::string(callback_data->pMessage));
-    }
-
+    if (msg_severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        LOGGER_THREAD(LogLevel::WARNING, "[Vulkan Debug] " + std::string(callback_data->pMessage))
     return false;
 }
 
@@ -501,6 +520,7 @@ inline std::vector<const char*> get_vk_validation_layer_exts()
 // ReSharper disable once CppDFAUnreachableFunctionCall
 inline bool has_validation_layer_support(const vk::DispatchLoaderDynamic& loader)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     vk::ResultValue<std::vector<vk::LayerProperties>> available_layers_result
         = enumerateInstanceLayerProperties(loader);
     MVE_VAL_ASSERT(
@@ -512,23 +532,29 @@ inline bool has_validation_layer_support(const vk::DispatchLoaderDynamic& loader
          const std::string& validation_layer : validation_layers) {
         if (!std::ranges::any_of(available_layers, [&](const vk::LayerProperties& available_layer) {
                 if (std::strlen(available_layer.layerName.data()) != validation_layer.size()) {
+                    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                     return false;
                 }
                 for (int i = 0; i < validation_layer.size(); i++) {
                     if (available_layer.layerName.at(i) != validation_layer.at(i)) {
+                        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                         return false;
                     }
                 }
+                PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                 return true;
             })) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return true;
 }
 
 inline std::vector<const char*> get_vk_instance_required_exts()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     uint32_t glfw_ext_count = 0;
     const char** glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_count);
 
@@ -539,13 +565,14 @@ inline std::vector<const char*> get_vk_instance_required_exts()
 #ifdef MVE_ENABLE_VALIDATION
     exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return exts;
 }
 
 inline vk::Instance create_vk_instance(
     const std::string& app_name, const int app_version_major, const int app_version_minor, const int app_version_patch)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const vk::DispatchLoaderDynamic temp_loader(vkGetInstanceProcAddr);
     MVE_VAL_ASSERT(
         has_validation_layer_support(temp_loader), "[Renderer] Validation layers requested but not available")
@@ -581,11 +608,13 @@ inline vk::Instance create_vk_instance(
 #endif
     const vk::ResultValue<vk::Instance> instance_result = createInstance(instance_create_info, nullptr, temp_loader);
     MVE_ASSERT(instance_result.result == vk::Result::eSuccess, "[Renderer] Failed to create instance")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return instance_result.value;
 }
 
 inline vk::DebugUtilsMessengerEXT create_vk_debug_messenger(const vk::Instance instance)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VkDebugUtilsMessengerCreateInfoEXT debug_create_info {};
     debug_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debug_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
@@ -602,6 +631,7 @@ inline vk::DebugUtilsMessengerEXT create_vk_debug_messenger(const vk::Instance i
 
     VkDebugUtilsMessengerEXT debug_messenger;
     func(instance, &debug_create_info, nullptr, &debug_messenger);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { debug_messenger };
 }
 
@@ -613,6 +643,7 @@ inline std::vector<const char*> get_vk_device_required_exts()
 inline QueueFamilyIndices get_vk_queue_family_indices(
     const vk::DispatchLoaderDynamic& loader, const vk::PhysicalDevice physical_device, const vk::SurfaceKHR surface)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     QueueFamilyIndices indices;
 
     const std::vector<vk::QueueFamilyProperties> queue_families = physical_device.getQueueFamilyProperties(loader);
@@ -637,6 +668,7 @@ inline QueueFamilyIndices get_vk_queue_family_indices(
 
         i++;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return indices;
 }
 
@@ -666,6 +698,7 @@ inline SwapchainSupportDetails get_vk_swapchain_support_details(
 inline bool is_vk_physical_device_suitable(
     const vk::DispatchLoaderDynamic& loader, vk::PhysicalDevice physical_device, vk::SurfaceKHR surface)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     QueueFamilyIndices indices = get_vk_queue_family_indices(loader, physical_device, surface);
 
     vk::ResultValue<std::vector<vk::ExtensionProperties>> available_exts_result
@@ -680,6 +713,7 @@ inline bool is_vk_physical_device_suitable(
         if (!std::ranges::any_of(std::as_const(available_exts), [&](const vk::ExtensionProperties& ext_props) {
                 return required_ext == ext_props.extensionName;
             })) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
         }
     }
@@ -688,13 +722,14 @@ inline bool is_vk_physical_device_suitable(
     bool is_swapchain_adequate = !formats.empty() && !present_modes.empty();
 
     vk::PhysicalDeviceFeatures supported_features = physical_device.getFeatures(loader);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return indices.is_complete() && is_swapchain_adequate && supported_features.samplerAnisotropy;
 }
 
 inline vk::PhysicalDevice pick_vk_physical_device(
     const vk::Instance instance, const vk::DispatchLoaderDynamic& loader, const vk::SurfaceKHR surface)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     vk::ResultValue<std::vector<vk::PhysicalDevice>> physical_devices_result
         = instance.enumeratePhysicalDevices(loader);
     MVE_ASSERT(
@@ -706,19 +741,20 @@ inline vk::PhysicalDevice pick_vk_physical_device(
     for (vk::PhysicalDevice physical_device : physical_devices) {
         const auto vk_device_name = physical_device.getProperties(loader).deviceName;
         const auto device_name = std::string(vk_device_name.begin(), vk_device_name.end());
-        log().debug("[Renderer] GPU Found: {0}", device_name);
+        LOGGER_THREAD_DEBUG(LogLevel::INFO, "[Renderer] GPU Found: {0}" + device_name)
     }
 
     for (const vk::PhysicalDevice physical_device : physical_devices) {
         if (is_vk_physical_device_suitable(loader, physical_device, surface)) {
             const auto vk_device_name = physical_device.getProperties(loader).deviceName;
             const auto device_name = std::string(vk_device_name.begin(), vk_device_name.end());
-            log().info("[Renderer] Using GPU: {0}", device_name);
+            LOGGER_THREAD(LogLevel::INFO, "[Renderer] Using GPU: {0}" + device_name)
             return physical_device;
         }
     }
 
     MVE_ASSERT(false, "[Renderer] Failed to find a suitable Vulkan device")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline vk::Device create_vk_logical_device(
@@ -726,6 +762,7 @@ inline vk::Device create_vk_logical_device(
     vk::PhysicalDevice physical_device,
     QueueFamilyIndices queue_family_indices)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
 
     assert(queue_family_indices.is_complete());
@@ -778,20 +815,24 @@ inline vk::Device create_vk_logical_device(
 
     vk::ResultValue<vk::Device> device_result = physical_device.createDevice(device_create_info, nullptr, loader);
     MVE_ASSERT(device_result.result == vk::Result::eSuccess, "[Renderer] Failed to create device")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return device_result.value;
 }
 
 inline vk::SurfaceKHR create_vk_surface(const vk::Instance instance, GLFWwindow* window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VkSurfaceKHR surface;
     const VkResult result = glfwCreateWindowSurface(instance, window, nullptr, &surface);
     MVE_ASSERT(result == VK_SUCCESS, "[Renderer] Failed to create window surface")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { surface };
 }
 
 inline vk::SurfaceFormatKHR choose_vk_swapchain_surface_format(
     const std::vector<vk::SurfaceFormatKHR>& available_formats)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (const auto it = std::ranges::find_if(
             available_formats,
             [](const vk::SurfaceFormatKHR& available_format) {
@@ -799,28 +840,35 @@ inline vk::SurfaceFormatKHR choose_vk_swapchain_surface_format(
                     && available_format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
             });
         it != available_formats.end()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return *it;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return available_formats[0];
 }
 
 inline vk::PresentModeKHR choose_vk_swapchain_present_mode(
     const std::vector<vk::PresentModeKHR>& available_present_modes)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (const auto it = std::ranges::find_if(
             available_present_modes,
             [](const vk::PresentModeKHR& available_present_mode) {
                 return available_present_mode == vk::PresentModeKHR::eMailbox;
             });
         it != available_present_modes.end()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return *it;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return vk::PresentModeKHR::eFifo;
 }
 
 inline vk::Extent2D get_vk_swapchain_extent(const vk::SurfaceCapabilitiesKHR& capabilities, GLFWwindow* window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return capabilities.currentExtent;
     }
     int width;
@@ -833,7 +881,7 @@ inline vk::Extent2D get_vk_swapchain_extent(const vk::SurfaceCapabilitiesKHR& ca
         = std::clamp(actual_extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
     actual_extent.height
         = std::clamp(actual_extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return actual_extent;
 }
 
@@ -846,6 +894,7 @@ inline vk::SwapchainKHR create_vk_swapchain(
     const vk::Extent2D surface_extent,
     const QueueFamilyIndices queue_family_indices)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto [capabilities, formats, present_modes] = get_vk_swapchain_support_details(loader, physical_device, surface);
 
     const vk::PresentModeKHR present_mode = choose_vk_swapchain_present_mode(present_modes);
@@ -888,14 +937,17 @@ inline vk::SwapchainKHR create_vk_swapchain(
     const vk::ResultValue<vk::SwapchainKHR> swapchain_result
         = device.createSwapchainKHR(swapchain_create_info, nullptr, loader);
     MVE_ASSERT(swapchain_result.result == vk::Result::eSuccess, "[Renderer] Failed to create swapchain")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return swapchain_result.value;
 }
 
 inline std::vector<vk::Image> get_vk_swapchain_images(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const vk::SwapchainKHR swapchain)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     vk::ResultValue<std::vector<vk::Image>> images_result = device.getSwapchainImagesKHR(swapchain, loader);
     MVE_ASSERT(images_result.result == vk::Result::eSuccess, "[Renderer] Failed to get swapchain images")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return images_result.value;
 }
 
@@ -905,27 +957,32 @@ inline std::vector<vk::ImageView> create_vk_swapchain_image_views(
     const std::vector<vk::Image>& swapchain_images,
     const vk::Format image_format)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<vk::ImageView> image_views;
 
     std::ranges::transform(swapchain_images, std::back_inserter(image_views), [&](const vk::Image swapchain_image) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return create_image_view(loader, device, swapchain_image, image_format, vk::ImageAspectFlagBits::eColor, 1);
     });
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return image_views;
 }
 
 inline vk::VertexInputBindingDescription create_vk_binding_description(const VertexLayout& layout)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto binding_description
         = vk::VertexInputBindingDescription()
               .setBinding(0)
               .setStride(get_vertex_layout_bytes(layout))
               .setInputRate(vk::VertexInputRate::eVertex);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return binding_description;
 }
 
 inline std::vector<vk::VertexInputAttributeDescription> create_vk_attribute_descriptions(const VertexLayout& layout)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto attribute_descriptions = std::vector<vk::VertexInputAttributeDescription>();
     attribute_descriptions.reserve(layout.size());
 
@@ -954,7 +1011,7 @@ inline std::vector<vk::VertexInputAttributeDescription> create_vk_attribute_desc
 
         attribute_descriptions.push_back(description);
     }
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return attribute_descriptions;
 }
 
@@ -969,6 +1026,7 @@ inline vk::Pipeline create_vk_graphics_pipeline(
     vk::SampleCountFlagBits samples,
     bool depth_test)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<uint32_t> vertex_spv_code = vertex_shader.spv_code();
     auto vertex_shader_create_info
         = vk::ShaderModuleCreateInfo().setCodeSize(vertex_spv_code.size() * 4).setPCode(vertex_spv_code.data());
@@ -1104,7 +1162,7 @@ inline vk::Pipeline create_vk_graphics_pipeline(
 
     device.destroy(vertex_shader_module, nullptr, loader);
     device.destroy(fragment_shader_module, nullptr, loader);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return graphics_pipeline;
 }
 
@@ -1115,6 +1173,7 @@ inline vk::RenderPass create_vk_render_pass(
     vk::Format depth_format,
     vk::SampleCountFlagBits samples)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto color_attachment
         = vk::AttachmentDescription()
               .setFormat(swapchain_format)
@@ -1205,6 +1264,7 @@ inline vk::RenderPass create_vk_render_pass(
 
     vk::ResultValue<vk::RenderPass> render_pass_result = device.createRenderPass(render_pass_info, nullptr, loader);
     MVE_ASSERT(render_pass_result.result == vk::Result::eSuccess, "[Renderer] Failed to create render pass")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return render_pass_result.value;
 }
 
@@ -1215,6 +1275,7 @@ inline vk::RenderPass create_vk_render_pass_framebuffer(
     vk::Format depth_format,
     vk::SampleCountFlagBits samples)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto color_attachment
         = vk::AttachmentDescription()
               .setFormat(swapchain_format)
@@ -1305,6 +1366,7 @@ inline vk::RenderPass create_vk_render_pass_framebuffer(
 
     vk::ResultValue<vk::RenderPass> render_pass_result = device.createRenderPass(render_pass_info, nullptr, loader);
     MVE_ASSERT(render_pass_result.result == vk::Result::eSuccess, "[Renderer] Failed to create render pass")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return render_pass_result.value;
 }
 
@@ -1318,6 +1380,7 @@ inline std::vector<vk::Framebuffer> create_vk_framebuffers(
     const vk::ImageView depth_image_view,
     const vk::SampleCountFlagBits samples)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<vk::Framebuffer> framebuffers;
 
     for (const vk::ImageView& swapchain_image_view : swapchain_image_views) {
@@ -1344,6 +1407,7 @@ inline std::vector<vk::Framebuffer> create_vk_framebuffers(
         MVE_ASSERT(framebuffer_result.result == vk::Result::eSuccess, "[Renderer] Failed to create framebuffer")
         framebuffers.push_back(framebuffer_result.value);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return framebuffers;
 }
 
@@ -1353,6 +1417,7 @@ inline std::vector<vk::CommandBuffer> create_vk_command_buffers(
     const vk::CommandPool command_pool,
     const int frames_in_flight)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto buffer_alloc_info
         = vk::CommandBufferAllocateInfo()
               .setCommandPool(command_pool)
@@ -1362,6 +1427,7 @@ inline std::vector<vk::CommandBuffer> create_vk_command_buffers(
     vk::ResultValue<std::vector<vk::CommandBuffer>> command_buffers_result
         = device.allocateCommandBuffers(buffer_alloc_info, loader);
     MVE_ASSERT(command_buffers_result.result == vk::Result::eSuccess, "[Renderer] Failed to allocate command buffers")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return command_buffers_result.value;
 }
 
@@ -1372,6 +1438,7 @@ inline Buffer create_buffer(
     const VmaMemoryUsage memory_usage,
     const VmaAllocationCreateFlags flags = 0)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size;
@@ -1385,7 +1452,7 @@ inline Buffer create_buffer(
     VmaAllocation allocation;
 
     vmaCreateBuffer(allocator, &buffer_info, &vma_alloc_info, &vk_buffer, &allocation, nullptr);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { vk::Buffer(vk_buffer), allocation };
 }
 
@@ -1396,8 +1463,10 @@ inline void cmd_copy_buffer(
     const vk::Buffer dst_buffer,
     const vk::DeviceSize size)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto copy_region = vk::BufferCopy().setSrcOffset(0).setDstOffset(0).setSize(size);
     command_buffer.copyBuffer(src_buffer, dst_buffer, 1, &copy_region, loader);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline std::vector<FrameInFlight> create_frames_in_flight(
@@ -1406,6 +1475,7 @@ inline std::vector<FrameInFlight> create_frames_in_flight(
     const vk::CommandPool command_pool,
     const int frame_count)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto frames_in_flight = std::vector<FrameInFlight>();
     frames_in_flight.reserve(frame_count);
 
@@ -1438,13 +1508,14 @@ inline std::vector<FrameInFlight> create_frames_in_flight(
         frame.uniform_buffers = {};
         frames_in_flight.push_back(frame);
     }
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return frames_in_flight;
 }
 
 inline vk::DescriptorSetLayout create_vk_descriptor_set_layout(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     constexpr auto ubo_layout_binding
         = vk::DescriptorSetLayoutBinding()
               .setBinding(0)
@@ -1461,12 +1532,14 @@ inline vk::DescriptorSetLayout create_vk_descriptor_set_layout(
     MVE_ASSERT(
         descriptor_set_layout_result.result == vk::Result::eSuccess,
         "[Renderer] Failed to create descriptor set layout")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return descriptor_set_layout_result.value;
 }
 
 inline vk::DescriptorPool create_vk_descriptor_pool(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const int frames_in_flight)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto pool_size = vk::DescriptorPoolSize()
                                .setType(vk::DescriptorType::eUniformBuffer)
                                .setDescriptorCount(static_cast<uint32_t>(frames_in_flight));
@@ -1480,6 +1553,7 @@ inline vk::DescriptorPool create_vk_descriptor_pool(
     const vk::ResultValue<vk::DescriptorPool> descriptor_pool_result
         = device.createDescriptorPool(pool_info, nullptr, loader);
     MVE_ASSERT(descriptor_pool_result.result == vk::Result::eSuccess, "[Renderer] Failed to create descriptor pool")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return descriptor_pool_result.value;
 }
 
@@ -1490,6 +1564,7 @@ inline std::vector<vk::DescriptorSet> create_vk_descriptor_sets(
     const vk::DescriptorPool pool,
     const int count)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto layouts = std::vector(count, layout);
 
     const auto alloc_info
@@ -1501,12 +1576,14 @@ inline std::vector<vk::DescriptorSet> create_vk_descriptor_sets(
     vk::ResultValue<std::vector<vk::DescriptorSet>> descriptor_sets_result
         = device.allocateDescriptorSets(alloc_info, loader);
     MVE_ASSERT(descriptor_sets_result.result == vk::Result::eSuccess, "[Renderer] Failed to allocate descriptor sets")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return descriptor_sets_result.value;
 }
 
 inline vk::CommandPool create_vk_command_pool(
     const vk::DispatchLoaderDynamic& loader, const vk::Device device, const QueueFamilyIndices queue_family_indices)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     assert(queue_family_indices.is_complete());
 
     const auto command_pool_info
@@ -1517,11 +1594,13 @@ inline vk::CommandPool create_vk_command_pool(
     const vk::ResultValue<vk::CommandPool> command_pool_result
         = device.createCommandPool(command_pool_info, nullptr, loader);
     MVE_ASSERT(command_pool_result.result == vk::Result::eSuccess, "[Renderer] Failed to create command buffer")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return command_pool_result.value;
 }
 
 inline Msaa vk_samples_to_msaa(const vk::SampleCountFlagBits vk_samples)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     switch (vk_samples) {
     case vk::SampleCountFlagBits::e1:
         return Msaa::samples_1;
@@ -1539,6 +1618,7 @@ inline Msaa vk_samples_to_msaa(const vk::SampleCountFlagBits vk_samples)
         return Msaa::samples_64;
     }
     MVE_ASSERT(false, "Unreachable");
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 }

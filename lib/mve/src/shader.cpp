@@ -6,27 +6,28 @@
 
 #include <spirv_reflect.h>
 
-#include "./logger.hpp"
 #include <mve/common.hpp>
+
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
+
+#include <game_performance_profiler.hpp>
 
 namespace mve {
 
 Shader::Shader(const std::filesystem::path& file_path)
 {
-    log().debug("Loading shader: " + file_path.string());
-
+    LOGGER_THREAD_DEBUG(LogLevel::INFO, "Loading shader: " + file_path.string())
     std::ifstream file(file_path, std::ios::binary);
-
     MVE_ASSERT(file.is_open(), "[Shader] Failed to open shader file: " + file_path.string())
-
     std::vector<uint32_t> contents;
     uint32_t data;
     while (file.read(reinterpret_cast<char*>(&data), sizeof(data))) {
         contents.push_back(data);
     }
-
     file.close();
-
     m_spv_code = contents;
     create_reflection_data();
 }
@@ -64,6 +65,7 @@ static std::optional<ShaderBindingBlock> create_binding_block( // NOLINT(*-no-re
 
 void Shader::create_reflection_data()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     SpvReflectShaderModule shader_module;
     SpvReflectResult shader_module_result
         = spvReflectCreateShaderModule(m_spv_code.size() * 4, m_spv_code.data(), &shader_module);
@@ -109,6 +111,7 @@ void Shader::create_reflection_data()
     MVE_ASSERT(input_enum_result == SPV_REFLECT_RESULT_SUCCESS, "[Shader] Failed to enumerate input variables")
 
     m_reflection_data.sets = std::move(sets);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 const std::unordered_map<uint32_t, ShaderDescriptorSet>& Shader::descriptor_sets() const
 {

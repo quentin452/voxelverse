@@ -2,9 +2,11 @@
 
 #include "chunk_column.hpp"
 #include "world_data.hpp"
+#include <game_performance_profiler.hpp>
 
 void apply_sunlight(ChunkColumn& chunk)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for_2d({ 0, 0 }, { 16, 16 }, [&](const nnm::Vector2i offset) {
         const nnm::Vector2i world_col = block_local_to_world_col(chunk.pos(), offset);
         bool covered = false;
@@ -23,10 +25,11 @@ void apply_sunlight(ChunkColumn& chunk)
             }
         }
     });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
-
 void propagate_light(WorldData& world_data, const nnm::Vector3i chunk_pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     static std::vector<std::pair<nnm::Vector3i, uint8_t>> queue;
     queue.clear();
 
@@ -106,7 +109,6 @@ void propagate_light(WorldData& world_data, const nnm::Vector3i chunk_pos)
             queue.emplace_back(world_pos, 15);
         }
     });
-
     while (!queue.empty()) {
         const auto [pos, prev_val] = queue.back();
         queue.pop_back();
@@ -124,10 +126,12 @@ void propagate_light(WorldData& world_data, const nnm::Vector3i chunk_pos)
             }
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void refresh_lighting(WorldData& world_data, const nnm::Vector3i chunk_pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // TODO: Make lighting queue and need to do whole column
 
     for_3d({ -1, -1, -1 }, { 2, 2, 2 }, [&](const nnm::Vector3i offset) {
@@ -147,4 +151,5 @@ void refresh_lighting(WorldData& world_data, const nnm::Vector3i chunk_pos)
             propagate_light(world_data, chunk_pos + offset);
         }
     });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

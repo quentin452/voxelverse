@@ -1,4 +1,5 @@
 #include "nine_patch.hpp"
+#include <game_performance_profiler.hpp>
 
 NinePatch::NinePatch(
     UIPipeline& ui_pipeline,
@@ -14,6 +15,7 @@ NinePatch::NinePatch(
     , m_scale(scale)
     , m_size(size)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_uniform_data.descriptor_set.write_binding(ui_pipeline.texture_binding(), *texture);
     m_uniform_data.buffer.update(
         ui_pipeline.model_location(), nnm::Transform3f().scale(nnm::Vector3f::all(scale)).matrix);
@@ -75,6 +77,7 @@ NinePatch::NinePatch(
     }
     m_vertex_buffer = ui_pipeline.renderer().create_vertex_buffer(vertex_data);
     m_index_buffer = ui_pipeline.renderer().create_index_buffer(indices);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void NinePatch::draw() const
@@ -105,6 +108,8 @@ void NinePatch::set_scale(const float scale)
 
 void NinePatch::update_texture(const mve::Texture& texture) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     // TODO: This texture could be different size from original
     m_uniform_data.descriptor_set.write_binding(m_pipeline->texture_binding(), texture);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

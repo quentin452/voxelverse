@@ -1,8 +1,7 @@
 #include "button.hpp"
 
+#include <game_performance_profiler.hpp>
 #include <mve/window.hpp>
-
-#include "../../common/logger.hpp"
 
 Button::Button(
     UIPipeline& ui_pipeline,
@@ -27,8 +26,10 @@ Button::Button(
 
 void Button::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_patch.draw();
     m_text.draw();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Button::set_position(const nnm::Vector2f& pos)
 {
@@ -60,6 +61,7 @@ void Button::set_hover_texture(std::shared_ptr<mve::Texture> texture)
 }
 void Button::update(const mve::Window& window)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector2 mouse_pos = window.mouse_pos();
     const bool hover = is_pos_in_button(mouse_pos);
     const bool down = window.is_mouse_button_down(mve::MouseButton::left);
@@ -116,6 +118,7 @@ void Button::update(const mve::Window& window)
         }
         break;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Button::set_pressed_texture(std::shared_ptr<mve::Texture> texture)
 {

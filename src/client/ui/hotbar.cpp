@@ -1,6 +1,7 @@
 #include "hotbar.hpp"
 
 #include "../common.hpp"
+#include <game_performance_profiler.hpp>
 
 Hotbar::Hotbar(UIPipeline& ui_pipeline)
     : m_ui_pipeline(&ui_pipeline)
@@ -57,6 +58,7 @@ Hotbar::Hotbar(UIPipeline& ui_pipeline)
 
 void Hotbar::resize(const nnm::Vector2i& extent)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_renderer_extent = extent;
     m_hotbar.uniform_data.buffer.update(
         m_model_location, nnm::Transform3f().scale(scale()).translate(translation()).matrix);
@@ -74,10 +76,12 @@ void Hotbar::resize(const nnm::Vector2i& extent)
                     .matrix);
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Hotbar::update_hotbar_select(const int pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_select_pos = pos;
     constexpr int first_offset_x = -20 * 5 * 4;
     m_select.uniform_data.buffer.update(
@@ -86,6 +90,7 @@ void Hotbar::update_hotbar_select(const int pos)
             .scale(scale())
             .translate(translation() + nnm::Vector3f(static_cast<float>(first_offset_x + pos * 20 * 5), 0, 0) * scale())
             .matrix);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 nnm::Vector3f Hotbar::scale() const
 {
@@ -98,6 +103,7 @@ nnm::Vector3f Hotbar::translation() const
 }
 std::pair<mve::VertexData, std::vector<uint32_t>> Hotbar::create_item_mesh(const uint8_t block_type)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     constexpr auto size = nnm::Vector2f::all(14 * 5);
     auto [top_left, top_right, bottom_right, bottom_left]
         = uvs_from_atlas({ 4, 4 }, block_uv(block_type, Direction::front));
@@ -115,12 +121,13 @@ std::pair<mve::VertexData, std::vector<uint32_t>> Hotbar::create_item_mesh(const
     data.push_back(nnm::Vector3(-0.5f * size.x, 0.0f * size.y, 0.0f));
     data.push_back({ 0.0f, 0.0f, 0.0f });
     data.push_back(bottom_left);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { data, { 0, 3, 2, 0, 2, 1 } };
 }
 
 void Hotbar::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_ui_pipeline->draw(m_hotbar.uniform_data.descriptor_set, m_hotbar.vertex_buffer, m_hotbar.index_buffer);
     for (const auto& [pos, item] : m_items) {
         if (item.has_value()) {
@@ -129,6 +136,7 @@ void Hotbar::draw() const
         }
     }
     m_ui_pipeline->draw(m_select.uniform_data.descriptor_set, m_select.vertex_buffer, m_select.index_buffer);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Hotbar::set_item(const int pos, const uint8_t block_type)

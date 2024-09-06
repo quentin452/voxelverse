@@ -4,6 +4,7 @@
 #include <cereal/archives/portable_binary.hpp>
 
 #include "world_data.hpp"
+#include <game_performance_profiler.hpp>
 #include <nnm/nnm.hpp>
 
 Player::Player()
@@ -27,6 +28,7 @@ Player::Player()
 
 void Player::update(const mve::Window& window, const bool capture_input)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector2f mouse_delta = capture_input ? window.mouse_delta() : nnm::Vector2f::zero();
     m_head_rotation.x -= mouse_delta.x * 0.001f;
     m_head_rotation.y -= mouse_delta.y * 0.001f;
@@ -53,9 +55,11 @@ void Player::update(const mve::Window& window, const bool capture_input)
         }
     }
     m_save_loop.update(1, [this] { save_pos(); });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Player::fixed_update(const mve::Window& window, const WorldData& data, const bool capture_input)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_prev_pos = m_pos;
     const bool on_ground = is_on_ground(data);
     nnm::Vector3f dir;
@@ -130,11 +134,13 @@ void Player::fixed_update(const mve::Window& window, const WorldData& data, cons
     if (m_is_flying && is_on_ground(data)) {
         m_is_flying = false;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 nnm::Vector3f Player::move_and_slide(
     BoundingBox box, nnm::Vector3f& pos, const nnm::Vector3f velocity, const WorldData& data)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     auto detect_collision = [](const nnm::Vector3f vel, const BoundingBox& bbox, const WorldData& world_data) {
         const BoundingBox broadphase_box = swept_broadphase_box(vel, bbox);
         SweptBoundingBoxCollision min_collision { .time = 1.0f, .normal = nnm::Vector3f::zero() };
@@ -165,6 +171,7 @@ nnm::Vector3f Player::move_and_slide(
 
     float remaining_time = 1.0f - collision.time;
     if (remaining_time == 0.0f) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return velocity;
     }
     nnm::Vector3 slide_vel = velocity * (nnm::Vector3(1.0f, 1.0f, 1.0f) - collision.normal.abs()) * remaining_time;
@@ -177,6 +184,7 @@ nnm::Vector3f Player::move_and_slide(
 
     remaining_time = 1.0f - collision.time;
     if (remaining_time == 0.0f) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return slide_vel;
     }
     slide_vel = slide_vel * (nnm::Vector3(1.0f, 1.0f, 1.0f) - collision.normal.abs()) * remaining_time;
@@ -184,12 +192,13 @@ nnm::Vector3f Player::move_and_slide(
     collision = detect_collision(slide_vel, box, data);
 
     pos = pos.translate(slide_vel * (collision.time - collision_padding));
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return slide_vel;
 }
 
 bool Player::is_on_ground(const WorldData& data) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     BoundingBox bb = bounding_box();
     bb.min += nnm::Vector3(0.001f, 0.001f, -0.001f);
     bb.max += nnm::Vector3(-0.001f, -0.001f, -0.001f);
@@ -205,6 +214,7 @@ bool Player::is_on_ground(const WorldData& data) const
             is_on_ground = true;
         }
     });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return is_on_ground;
 }
 Player::~Player()

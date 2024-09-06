@@ -5,6 +5,7 @@
 #include "world_data.hpp"
 #include "world_generator.hpp"
 #include "world_renderer.hpp"
+#include <game_performance_profiler.hpp>
 
 void ChunkController::update(
     WorldData& world_data,
@@ -12,6 +13,7 @@ void ChunkController::update(
     WorldRenderer& world_renderer,
     const nnm::Vector3i player_chunk)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (const nnm::Vector2i player_chunk_col = { player_chunk.x, player_chunk.y };
         player_chunk_col != m_player_chunk_col) {
         world_data.set_player_chunk(player_chunk_col);
@@ -93,20 +95,24 @@ void ChunkController::update(
             break;
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void ChunkController::queue_recreate_mesh(const nnm::Vector2i chunk_pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (m_chunk_states.contains(chunk_pos)) {
         if (uint8_t& flags = m_chunk_states.at(chunk_pos).flags;
             contains_flag(flags, flag_is_generated) && contains_flag(flags, flag_has_mesh)) {
             enable_flag(flags, flag_queued_mesh);
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void ChunkController::on_player_chunk_change()
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_sorted_chunks_in_range.clear();
     for_2d(
         nnm::Vector2i(-m_render_distance, -m_render_distance)
@@ -129,4 +135,5 @@ void ChunkController::on_player_chunk_change()
             < nnm::Vector2f(b).distance_sqrd(
                 nnm::Vector2(static_cast<float>(m_player_chunk_col.x), static_cast<float>(m_player_chunk_col.y)));
     });
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

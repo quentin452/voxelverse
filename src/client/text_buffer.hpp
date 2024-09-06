@@ -1,4 +1,5 @@
 #pragma once
+#include <game_performance_profiler.hpp>
 
 #include "text_pipeline.hpp"
 
@@ -107,7 +108,9 @@ public:
 
     void draw() const
     {
+        PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         m_pipeline->draw(*this);
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     }
 
     TextBuffer& operator=(TextBuffer&& other) noexcept

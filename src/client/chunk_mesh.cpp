@@ -7,9 +7,11 @@
 #include "chunk_data.hpp"
 #include "world_data.hpp"
 #include "world_renderer.hpp"
+#include <game_performance_profiler.hpp>
 
 void combine_mesh_data(ChunkMeshData& data, const ChunkMeshData& other)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const uint32_t indices_offset = data.vertices.size();
     for (int i = 0; i < other.vertices.size(); i++) {
         data.vertices.push_back(other.vertices[i]);
@@ -20,6 +22,7 @@ void combine_mesh_data(ChunkMeshData& data, const ChunkMeshData& other)
     for (const unsigned int index : other.indices) {
         data.indices.push_back(index + indices_offset);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 std::array<uint8_t, 4> calc_chunk_face_lighting(
@@ -29,6 +32,7 @@ std::array<uint8_t, 4> calc_chunk_face_lighting(
     const nnm::Vector3i local_block_pos,
     const Direction dir)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector3i world_pos = block_local_to_world(chunk_pos, local_block_pos);
 
     uint8_t base_lighting = 0;
@@ -191,6 +195,7 @@ std::array<uint8_t, 4> calc_chunk_face_lighting(
             }
         }
         const int val = count == 0 ? 0 : total / count;
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return static_cast<uint8_t>(nnm::clamp(val * 16, 0, 255));
     };
 
@@ -249,13 +254,14 @@ std::array<uint8_t, 4> calc_chunk_face_lighting(
             }
         }
     }
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return lighting;
 }
 
 ChunkFaceData create_chunk_face_mesh(
     const uint8_t block_type, const nnm::Vector3f offset, const Direction face, const std::array<uint8_t, 4>& lighting)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     ChunkFaceData data;
     QuadUVs uvs;
     switch (face) {
@@ -322,11 +328,13 @@ ChunkFaceData create_chunk_face_mesh(
                        static_cast<float>(lighting[3]) / 255.0f };
     data.indices = { 0, 3, 2, 0, 2, 1 };
     // data.indices = { 0, 2, 3, 0, 1, 2 };
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return data;
 }
 
 void add_face_to_mesh(ChunkMeshData& data, const ChunkFaceData& face)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const uint32_t indices_offset = data.vertices.size();
     for (int i = 0; i < face.vertices.size(); i++) {
         data.vertices.push_back(face.vertices[i]);
@@ -337,6 +345,7 @@ void add_face_to_mesh(ChunkMeshData& data, const ChunkFaceData& face)
     for (const unsigned int index : face.indices) {
         data.indices.push_back(index + indices_offset);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void calc_chunk_block_faces(
@@ -349,6 +358,7 @@ void calc_chunk_block_faces(
     const bool iterate_empty,
     const std::array<bool, 6>& directions = { true, true, true, true, true, true })
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for (int f = 0; f < 6; f++) {
         if (!directions[f]) {
             continue;
@@ -384,10 +394,12 @@ void calc_chunk_block_faces(
             }
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 std::optional<ChunkBufferData> create_chunk_buffer_data(const nnm::Vector3i chunk_pos, const WorldData& world_data)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     ChunkMeshData mesh;
     const ChunkData& chunk_data = world_data.chunk_data_at(chunk_pos);
     for_3d({ 0, 0, 0 }, { 16, 16, 16 }, [&](const nnm::Vector3i local_pos) {
@@ -427,6 +439,7 @@ std::optional<ChunkBufferData> create_chunk_buffer_data(const nnm::Vector3i chun
     });
 
     if (mesh.vertices.empty()) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return {};
     }
 
@@ -440,4 +453,5 @@ std::optional<ChunkBufferData> create_chunk_buffer_data(const nnm::Vector3i chun
     return ChunkBufferData {
         .chunk_pos = chunk_pos, .vertex_data = std::move(vertex_data), .index_data = std::move(mesh.indices)
     };
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

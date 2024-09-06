@@ -1,6 +1,7 @@
 #include "crosshair.hpp"
 
 #include "../common.hpp"
+#include <game_performance_profiler.hpp>
 
 Crosshair::Crosshair(UIPipeline& pipeline)
     : m_pipeline(&pipeline)
@@ -37,7 +38,9 @@ Crosshair::Crosshair(UIPipeline& pipeline)
 
 void Crosshair::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_pipeline->draw(m_uniform_data.descriptor_set, m_vertex_buffer, m_index_buffer);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void Crosshair::resize()
 {

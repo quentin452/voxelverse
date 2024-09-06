@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "world_renderer.hpp"
+#include <game_performance_profiler.hpp>
 
 WireBoxMesh::WireBoxMesh(
     mve::Renderer& renderer,
@@ -66,6 +67,7 @@ void WireBoxMesh::set_position(const nnm::Vector3f position)
 WireBoxMesh::MeshData WireBoxMesh::create_rect_mesh(
     const float length, const float width, const nnm::Transform3f& transform)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     MeshData mesh_data;
     float hl = length / 2.0f;
     float hw = width / 2.0f;
@@ -102,6 +104,7 @@ WireBoxMesh::MeshData WireBoxMesh::create_rect_mesh(
 
     std::ranges::transform(
         std::as_const(mesh_data.vertices), mesh_data.vertices.begin(), [&](const nnm::Vector3f vertex) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return vertex.transform(transform);
         });
 
@@ -111,10 +114,12 @@ WireBoxMesh::MeshData WireBoxMesh::create_rect_mesh(
             mesh_data.indices.push_back(i + q * 4);
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return mesh_data;
 }
 WireBoxMesh::MeshData WireBoxMesh::create_rect_mesh(const nnm::Vector3f from, const nnm::Vector3f to, const float width)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector3f dir = (to - from).normalize().abs();
     const nnm::QuaternionF quaternion = nnm::QuaternionF::from_vector_to_vector({ 0, 0, 1 }, dir);
     const auto basis = nnm::Basis3f::from_rotation_quaternion(quaternion);
@@ -125,11 +130,13 @@ WireBoxMesh::MeshData WireBoxMesh::create_rect_mesh(const nnm::Vector3f from, co
               .rotate_axis_angle_local({ 0, 1, 0 }, nnm::radians(90.0f))
               .translate((to + from) / 2.0f);
     MeshData rect_mesh = create_rect_mesh(from.distance(to) + width, width, matrix);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return rect_mesh;
 }
 
 void WireBoxMesh::combine_mesh_data(MeshData& data, const MeshData& other)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const uint32_t indices_offset = data.vertices.size();
     for (const nnm::Vector3f& vertex : other.vertices) {
         data.vertices.push_back(vertex);
@@ -137,4 +144,5 @@ void WireBoxMesh::combine_mesh_data(MeshData& data, const MeshData& other)
     for (const uint32_t index : other.indices) {
         data.indices.push_back(index + indices_offset);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

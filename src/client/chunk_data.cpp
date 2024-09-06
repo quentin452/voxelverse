@@ -1,4 +1,5 @@
 #include "chunk_data.hpp"
+#include <game_performance_profiler.hpp>
 
 ChunkData::ChunkData()
 {
@@ -12,6 +13,7 @@ ChunkData::ChunkData(const nnm::Vector3i chunk_pos)
 }
 void ChunkData::set_block(const nnm::Vector3i pos, const uint8_t type)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(is_block_pos_local(pos), "[ChunkData] Invalid local block position");
     if (m_block_data[index(pos)] == 0 && type != 0) {
         m_block_count++;
@@ -20,4 +22,5 @@ void ChunkData::set_block(const nnm::Vector3i pos, const uint8_t type)
         m_block_count--;
     }
     m_block_data[index(pos)] = type;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

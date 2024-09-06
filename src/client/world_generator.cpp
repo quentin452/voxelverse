@@ -5,7 +5,7 @@
 #include "common.hpp"
 #include "lighting.hpp"
 #include "world_data.hpp"
-
+#include <game_performance_profiler.hpp>
 WorldGenerator::WorldGenerator(int seed)
     : m_noise_oct1(std::make_unique<FastNoiseLite>(seed))
     , m_noise_oct2(std::make_unique<FastNoiseLite>(seed + 1))
@@ -21,8 +21,10 @@ WorldGenerator::WorldGenerator(int seed)
 
 void WorldGenerator::generate_chunk(WorldData& world_data, const nnm::Vector2i chunk_pos) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (world_data.contains_column(chunk_pos)) {
         if (world_data.chunk_column_data_at(chunk_pos).gen_level() >= ChunkColumn::generated) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return;
         }
     }
@@ -33,11 +35,14 @@ void WorldGenerator::generate_chunk(WorldData& world_data, const nnm::Vector2i c
     //     world_data.propagate_light({ chunk_pos.x, chunk_pos.y, h });
     // }
     column.set_gen_level(ChunkColumn::GenLevel::generated);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void WorldGenerator::generate_terrain(ChunkColumn& data, nnm::Vector2i chunk_pos) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (data.gen_level() >= ChunkColumn::terrain) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return;
     }
     std::array<std::array<float, 16>, 16> heights {};
@@ -78,10 +83,12 @@ void WorldGenerator::generate_terrain(ChunkColumn& data, nnm::Vector2i chunk_pos
         });
     }
     data.set_gen_level(ChunkColumn::GenLevel::terrain);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void WorldGenerator::generate_trees(WorldData& world_data, nnm::Vector2i chunk_pos) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for_2d({ -1, -1 }, { 2, 2 }, [&](const nnm::Vector2i offset) {
         const nnm::Vector2i neighbor_pos = chunk_pos + offset;
         if (!world_data.contains_column(neighbor_pos)) {
@@ -94,6 +101,7 @@ void WorldGenerator::generate_trees(WorldData& world_data, nnm::Vector2i chunk_p
     });
     ChunkColumn& column = world_data.chunk_column_data_at(chunk_pos);
     if (column.gen_level() >= ChunkColumn::GenLevel::trees) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return;
     }
     std::array<std::array<int, 16>, 16> heights {};
@@ -101,6 +109,7 @@ void WorldGenerator::generate_trees(WorldData& world_data, nnm::Vector2i chunk_p
         for (int h = 9 * 16; h > -10 * 16; h--) {
             if (column.get_block(nnm::Vector3i(chunk_pos.x * 16 + pos.x, chunk_pos.y * 16 + pos.y, h)) == 1) {
                 heights[pos.x][pos.y] = h;
+                PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                 break;
             }
         }
@@ -110,14 +119,17 @@ void WorldGenerator::generate_trees(WorldData& world_data, nnm::Vector2i chunk_p
         if (const float rand
             = m_struct_noise->GetNoise(static_cast<float>(world_col_pos.x), static_cast<float>(world_col_pos.y));
             rand <= 0.8f) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return;
         }
         const int height = heights[pos.x][pos.y];
         for_3d({ 0, 0, 0 }, { 5, 5, 7 }, [&](const nnm::Vector3i struct_pos) {
             if (c_tree_struct[struct_pos.z][struct_pos.y][struct_pos.x] == 0) {
+                PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                 return;
             }
             if (!is_block_height_world_valid(struct_pos.z + height + 1)) {
+                PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
                 return;
             }
             //            if (WorldData::is_block_pos_local_col(mve::Vector2i(pos.x + struct_pos.x - 2, pos.y +
@@ -139,4 +151,5 @@ void WorldGenerator::generate_trees(WorldData& world_data, nnm::Vector2i chunk_p
         });
     });
     column.set_gen_level(ChunkColumn::GenLevel::trees);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

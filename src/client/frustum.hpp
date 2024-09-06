@@ -5,11 +5,13 @@
 #include <nnm/nnm.hpp>
 
 #include "player.hpp"
+#include <game_performance_profiler.hpp>
 
 class Frustum {
 public:
     void update_perspective(const float angle, const float ratio, const float near_dist, const float far_dist)
     {
+        PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         m_ratio = ratio;
         m_angle = angle / 2.0f;
         m_near_dist = near_dist;
@@ -25,10 +27,12 @@ public:
 
         m_far_size.y = m_far_dist * m_tan_angle;
         m_far_size.x = m_far_size.y * ratio;
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     }
 
     void update_camera(const Player& camera)
     {
+        PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         m_camera_pos = camera.position();
         // compute the Z axis of camera
         m_z_axis = (camera.position() - camera.target()).normalize();
@@ -53,60 +57,74 @@ public:
         m_far_quad.bottom_right = far_center - m_y_axis * m_far_size.y + m_x_axis * m_far_size.x;
         m_far_quad.top_right = far_center + m_y_axis * m_far_size.y + m_x_axis * m_far_size.x;
         m_far_quad.bottom_left = far_center - m_y_axis * m_far_size.y - m_x_axis * m_far_size.x;
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     }
 
     [[nodiscard]] bool contains_point(const nnm::Vector3f point) const
     {
+        PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         const nnm::Vector3f point_from_center = point - m_camera_pos;
 
         // Test z
         const float point_z_val = point_from_center.dot(-m_z_axis);
-        if (point_z_val > m_far_dist || point_z_val < m_near_dist)
+        if (point_z_val > m_far_dist || point_z_val < m_near_dist) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
+        }
 
         // Test y
         const float point_y_val = point_from_center.dot(m_y_axis);
         const float y_bounds = point_z_val * m_tan_angle;
-        if (point_y_val > y_bounds || point_y_val < -y_bounds)
+        if (point_y_val > y_bounds || point_y_val < -y_bounds) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
+        }
 
         // Test x
         const float point_x_val = point_from_center.dot(m_x_axis);
-        if (const float x_bounds = y_bounds * m_ratio; point_x_val > x_bounds || point_x_val < -x_bounds)
+        if (const float x_bounds = y_bounds * m_ratio; point_x_val > x_bounds || point_x_val < -x_bounds) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
+        }
 
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return true;
     }
 
     [[nodiscard]] bool contains_sphere(const nnm::Vector3f position, const float radius) const
     {
+        PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         bool result = true;
 
         const nnm::Vector3f pos_from_center = position - m_camera_pos;
 
         const float az = pos_from_center.dot({ -m_z_axis.x, -m_z_axis.y, -m_z_axis.z });
-        if (az > m_far_dist + radius || az < m_near_dist - radius)
+        if (az > m_far_dist + radius || az < m_near_dist - radius) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
+        }
 
         const float ax = pos_from_center.dot(m_x_axis);
         const float zz1 = az * m_tan_angle * m_ratio;
         const float d1 = m_sphere_factor.x * radius;
-        if (ax > zz1 + d1 || ax < -zz1 - d1)
+        if (ax > zz1 + d1 || ax < -zz1 - d1) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
-
+        }
         const float ay = pos_from_center.dot(m_y_axis);
         const float zz2 = az * m_tan_angle;
         const float d2 = m_sphere_factor.y * radius;
-        if (ay > zz2 + d2 || ay < -zz2 - d2)
+        if (ay > zz2 + d2 || ay < -zz2 - d2) {
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return false;
-
+        }
         if (az > m_far_dist - radius || az < m_near_dist + radius)
             result = true;
         if (ay > zz2 - d2 || ay < -zz2 + d2)
             result = true;
         if (ax > zz1 - d1 || ax < -zz1 + d1)
             result = true;
-
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return result;
     }
 

@@ -1,8 +1,8 @@
 #include "pause_menu.hpp"
 
 #include "../../common/assert.hpp"
-#include "../../common/logger.hpp"
 #include "../common.hpp"
+#include <game_performance_profiler.hpp>
 
 PauseMenu::PauseMenu(UIPipeline& ui_pipeline, TextPipeline& text_pipeline)
     : m_button_texture(std::make_shared<mve::Texture>(ui_pipeline.renderer(), res_path("button_gray.png")))
@@ -31,6 +31,7 @@ PauseMenu::PauseMenu(UIPipeline& ui_pipeline, TextPipeline& text_pipeline)
 
 void PauseMenu::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (m_state == State::pause) {
         m_back_button.draw();
         m_options_button.draw();
@@ -39,6 +40,7 @@ void PauseMenu::draw() const
     else if (m_state == State::options) {
         m_options_menu.draw();
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void PauseMenu::resize(const nnm::Vector2i extent)
@@ -59,6 +61,7 @@ void PauseMenu::resize(const nnm::Vector2i extent)
 
 void PauseMenu::update(mve::Window& window, mve::Renderer& renderer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (m_state == State::pause) {
         m_back_button.update(window);
         m_options_button.update(window);
@@ -77,4 +80,5 @@ void PauseMenu::update(mve::Window& window, mve::Renderer& renderer)
             resize(m_extent);
         }
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

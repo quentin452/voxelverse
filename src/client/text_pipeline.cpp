@@ -1,4 +1,5 @@
 #include "text_pipeline.hpp"
+#include <game_performance_profiler.hpp>
 
 #include "common.hpp"
 
@@ -6,8 +7,12 @@
 #include FT_FREETYPE_H
 
 #include "../common/assert.hpp"
-#include "../common/logger.hpp"
 #include "text_buffer.hpp"
+
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
 
 TextPipeline::TextPipeline(mve::Renderer& renderer, const int point_size)
     : m_renderer(&renderer)
@@ -66,7 +71,7 @@ TextPipeline::TextPipeline(mve::Renderer& renderer, const int point_size)
     for (unsigned char c = 0; c < 128; c++) {
         result = FT_Load_Char(font_face, c, FT_LOAD_RENDER);
         if (result != 0) {
-            LOG->warn("[Text Pipeline] Failed to load glyph: {}", std::to_string(c));
+            LOGGER_THREAD(LogLevel::WARNING, "[Text Pipeline] Failed to load glyph: {}" + std::to_string(c))
             continue;
         }
         mve::Texture texture;
@@ -122,6 +127,7 @@ void TextPipeline::destroy(TextBuffer& buffer)
 
 void TextPipeline::draw(const TextBuffer& buffer) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to draw invalid text buffer")
     m_renderer->bind_graphics_pipeline(m_pipeline); // TODO: Determine if this is the best way to do this
     m_renderer->bind_vertex_buffer(m_vertex_buffer);
@@ -140,10 +146,12 @@ void TextPipeline::draw(const TextBuffer& buffer) const
         m_renderer->bind_vertex_buffer(m_cursor_vertex_buffer);
         m_renderer->draw_index_buffer(m_cursor_index_buffer);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void TextPipeline::set_text_buffer_translation(const TextBuffer& buffer, nnm::Vector2f pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to set translation on invalid text buffer")
     // ReSharper disable once CppUseStructuredBinding
     TextBufferImpl& buffer_impl = *m_text_buffers[buffer.m_handle];
@@ -163,9 +171,11 @@ void TextPipeline::set_text_buffer_translation(const TextBuffer& buffer, nnm::Ve
         glyph.translation = pos;
         pos.x += nnm::floor(static_cast<float>(advance) / 64.0f) * glyph.scale;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void TextPipeline::add_cursor(const TextBuffer& buffer, const int pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to add cursor on invalid text buffer")
     auto& [render_glyphs, cursor, cursor_pos, translation, scale, text_length, color, text]
         = *m_text_buffers[buffer.m_handle];
@@ -177,9 +187,11 @@ void TextPipeline::add_cursor(const TextBuffer& buffer, const int pos)
     cursor->descriptor_set.write_binding(m_glyph_ubo_binding, cursor->ubo);
     cursor->descriptor_set.write_binding(m_texture_binding, m_cursor_texture);
     set_cursor_pos(buffer, pos);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void TextPipeline::set_cursor_pos(const TextBuffer& buffer, int pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to set cursor position on invalid text buffer")
     auto& [render_glyphs, cursor, cursor_pos, translation, scale, text_length, color, text]
         = *m_text_buffers[buffer.m_handle];
@@ -194,6 +206,7 @@ void TextPipeline::set_cursor_pos(const TextBuffer& buffer, int pos)
               .scale(nnm::Vector3f::all(scale * static_cast<float>(c_point_size)))
               .translate({ x, translation.y + static_cast<float>(c_point_size), 0.1f });
     cursor->ubo.update(m_model_location, model.matrix);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void TextPipeline::remove_cursor(const TextBuffer& buffer)
 {
@@ -213,6 +226,7 @@ std::optional<int> TextPipeline::cursor_pos(const TextBuffer& buffer)
 
 void TextPipeline::update_text_buffer(const TextBuffer& buffer, const std::string_view text)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Text buffer invalid")
     // TODO: Find a better way to do this
     // ReSharper disable once CppUseStructuredBinding
@@ -230,7 +244,7 @@ void TextPipeline::update_text_buffer(const TextBuffer& buffer, const std::strin
     const float scale = buffer_impl.scale;
     for (char c : text) {
         if (!m_font_chars.contains(c)) {
-            LOG->warn("[Text Pipeline] Invalid char: {}", static_cast<uint32_t>(c));
+            LOGGER_THREAD(LogLevel::INFO, "[Text Pipeline] Invalid char: {}" + static_cast<uint32_t>(c))
             continue;
         }
         const auto& [texture, size, bearing, advance] = m_font_chars.at(c);
@@ -274,6 +288,7 @@ void TextPipeline::update_text_buffer(const TextBuffer& buffer, const std::strin
     if (buffer_impl.cursor.has_value()) {
         set_cursor_pos(buffer, buffer_impl.cursor_pos);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void TextPipeline::cursor_left(const TextBuffer& buffer)
@@ -292,6 +307,7 @@ void TextPipeline::cursor_right(const TextBuffer& buffer)
 
 void TextPipeline::set_text_buffer_scale(const TextBuffer& buffer, const float scale)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to set translation on invalid text buffer")
     // ReSharper disable once CppUseStructuredBinding
     TextBufferImpl& buffer_impl = *m_text_buffers[buffer.m_handle];
@@ -312,12 +328,15 @@ void TextPipeline::set_text_buffer_scale(const TextBuffer& buffer, const float s
         glyph.translation = pos;
         pos.x += nnm::floor(static_cast<float>(advance) / 64.0f) * glyph.scale;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 TextBuffer TextPipeline::create_text_buffer(
     const std::string_view text, const nnm::Vector2f pos, const float scale, const nnm::Vector3f color)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto it = std::ranges::find_if(m_text_buffers, [](const std::optional<TextBufferImpl>& buffer) {
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return !buffer.has_value();
     });
     TextBuffer buffer;
@@ -342,11 +361,13 @@ TextBuffer TextPipeline::create_text_buffer(
     set_text_buffer_translation(buffer, pos);
     set_text_buffer_color(buffer, color);
     update_text_buffer(buffer, text);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return buffer;
 }
 
 void TextPipeline::set_text_buffer_color(const TextBuffer& buffer, const nnm::Vector3f color)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to set color on invalid text buffer")
     // ReSharper disable once CppUseStructuredBinding
     TextBufferImpl& buffer_impl = *m_text_buffers[buffer.m_handle];
@@ -355,9 +376,11 @@ void TextPipeline::set_text_buffer_color(const TextBuffer& buffer, const nnm::Ve
     for (RenderGlyph& glyph : buffer_impl.render_glyphs) {
         glyph.ubo.update(m_text_color_location, color);
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 float TextPipeline::text_buffer_width(const TextBuffer& buffer) const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     VV_DEB_ASSERT(buffer.m_valid, "[Text Pipeline] Attempt to get width on invalid text buffer")
     // ReSharper disable once CppUseStructuredBinding
     const TextBufferImpl& buffer_impl = *m_text_buffers[buffer.m_handle];
@@ -369,5 +392,6 @@ float TextPipeline::text_buffer_width(const TextBuffer& buffer) const
         const FontChar& font_char = m_font_chars.at(glyph.character);
         pos.x += nnm::floor(static_cast<float>(font_char.advance) / 64.0f) * glyph.scale;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return pos.x - buffer_impl.translation.x;
 }

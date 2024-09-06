@@ -8,6 +8,7 @@
 
 #include "common.hpp"
 
+#include <game_performance_profiler.hpp>
 #include <nnm/nnm.hpp>
 
 namespace nnm {
@@ -78,6 +79,7 @@ struct Rect3 {
 
 inline std::vector<std::pair<nnm::Vector3f, nnm::Vector3f>> rect3_to_edges(const Rect3& rect)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::vector<std::pair<nnm::Vector3f, nnm::Vector3f>> edges;
     edges.reserve(12);
 
@@ -109,28 +111,33 @@ inline std::vector<std::pair<nnm::Vector3f, nnm::Vector3f>> rect3_to_edges(const
     edges.emplace_back(corners[4], corners[6]);
     edges.emplace_back(corners[5], corners[7]);
     edges.emplace_back(corners[6], corners[7]);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return edges;
 }
 
 inline Rect3 bounding_box_to_rect3(const BoundingBox& box)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector3 bottom_left_back(box.min.x, box.min.y, box.min.z);
     float width = box.max.x - box.min.x;
     float height = box.max.y - box.min.y;
     float depth = box.max.z - box.min.z;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { bottom_left_back, { width, height, depth } };
 }
 
 inline BoundingBox rect3_to_bounding_box(const Rect3& rect)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const nnm::Vector3 min(rect.pos.x, rect.pos.y, rect.pos.z);
     const nnm::Vector3 max(min.x + rect.size.x, min.y + rect.size.y, min.z + rect.size.z);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return { min, max };
 }
 
 inline BoundingBox swept_broadphase_box(const nnm::Vector3f vel, const BoundingBox& box)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     BoundingBox broadphase_box;
     broadphase_box.min.x = vel.x > 0.0f ? box.min.x : box.min.x + vel.x;
     broadphase_box.min.y = vel.y > 0.0f ? box.min.y : box.min.y + vel.y;
@@ -138,6 +145,7 @@ inline BoundingBox swept_broadphase_box(const nnm::Vector3f vel, const BoundingB
     broadphase_box.max.x = vel.x > 0.0f ? vel.x + box.max.x : box.max.x - vel.x;
     broadphase_box.max.y = vel.y > 0.0f ? vel.y + box.max.y : box.max.y - vel.y;
     broadphase_box.max.z = vel.z > 0.0f ? vel.z + box.max.z : box.max.z - vel.z;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return broadphase_box;
 }
 
@@ -148,6 +156,7 @@ struct SweptBoundingBoxCollision {
 
 inline SweptBoundingBoxCollision swept_bounding_box(nnm::Vector3f vel, const BoundingBox& b1, const BoundingBox& b2)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     nnm::Vector3f inv_entry;
     nnm::Vector3f inv_exit;
 
@@ -188,6 +197,7 @@ inline SweptBoundingBoxCollision swept_bounding_box(nnm::Vector3f vel, const Bou
         || entry.z > 1.0f) {
         collision.normal = nnm::Vector3f::zero();
         collision.time = 1.0f;
+        PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
         return collision;
     }
     // If collision
@@ -195,6 +205,7 @@ inline SweptBoundingBoxCollision swept_bounding_box(nnm::Vector3f vel, const Bou
     const int max_axis = entry.max_index();
     collision.normal[max_axis] = inv_entry[max_axis] < 0.0f ? 1.0f : -1.0f;
     collision.time = entry_time;
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return collision;
 }
 
@@ -202,6 +213,7 @@ enum class Direction { front = 0, back, left, right, top, bottom };
 
 inline bool collides(const BoundingBox& a, const BoundingBox& b)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     bool collision = true;
 
     if (a.max.x >= b.min.x && a.min.x <= b.max.x) {
@@ -215,7 +227,7 @@ inline bool collides(const BoundingBox& a, const BoundingBox& b)
     else {
         collision = false;
     }
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return collision;
 }
 
@@ -273,6 +285,7 @@ struct QuadUVs {
 
 inline QuadUVs uvs_from_atlas(const nnm::Vector2i atlas_size, const nnm::Vector2i pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const auto atlas_unit
         = nnm::Vector2(1.0f / static_cast<float>(atlas_size.x), 1.0f / static_cast<float>(atlas_size.y));
 
@@ -281,12 +294,13 @@ inline QuadUVs uvs_from_atlas(const nnm::Vector2i atlas_size, const nnm::Vector2
     uvs.top_right = uvs.top_left + nnm::Vector2(atlas_unit.x, 0.0f);
     uvs.bottom_right = uvs.top_right + nnm::Vector2(0.0f, atlas_unit.y);
     uvs.bottom_left = uvs.bottom_right + nnm::Vector2(-atlas_unit.x, 0.0f);
-
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return uvs;
 }
 
 inline nnm::Vector2i block_uv(const uint8_t block_type, const Direction face)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     switch (block_type) {
     case 1:
         switch (face) {
@@ -307,8 +321,10 @@ inline nnm::Vector2i block_uv(const uint8_t block_type, const Direction face)
         switch (face) {
         case Direction::top:
         case Direction::bottom:
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return { 3, 1 };
         default:
+            PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
             return { 2, 1 };
         }
     case 6:
@@ -324,6 +340,7 @@ inline nnm::Vector2i block_uv(const uint8_t block_type, const Direction face)
     default:
         return { 0, 0 };
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 inline bool is_transparent(const uint8_t block_type)
@@ -351,6 +368,7 @@ inline nnm::Vector3i chunk_pos_from_block_pos(const nnm::Vector3i block_pos)
 
 inline nnm::Vector3i block_world_to_local(const nnm::Vector3i world_block_pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     nnm::Vector3i mod = world_block_pos % 16;
     if (mod.x < 0) {
         mod.x = 16 + mod.x;
@@ -361,6 +379,7 @@ inline nnm::Vector3i block_world_to_local(const nnm::Vector3i world_block_pos)
     if (mod.z < 0) {
         mod.z = 16 + mod.z;
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return mod;
 }
 

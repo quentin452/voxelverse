@@ -1,4 +1,5 @@
 #include "hud.hpp"
+#include <game_performance_profiler.hpp>
 
 HUD::HUD(UIPipeline& ui_pipeline, TextPipeline& text_pipeline)
     : m_show_debug(false)
@@ -27,12 +28,14 @@ void HUD::resize(const nnm::Vector2i extent)
 
 void HUD::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     m_crosshair.draw();
     m_hotbar.draw();
     if (m_show_debug) {
         m_debug_overlay.draw();
     }
     m_console.draw();
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void HUD::toggle_debug()

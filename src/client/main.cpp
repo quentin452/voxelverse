@@ -1,22 +1,11 @@
 #include <filesystem>
 
-#include <spdlog/spdlog.h>
-
-#include "../common/logger.hpp"
 #include "app.hpp"
+#include <game_performance_profiler.hpp>
 
 int main()
 {
-    init_logger();
-
-#ifdef NDEBUG
-    LOG->set_level(spdlog::level::info);
-#else
-    LOG->set_level(spdlog::level::debug);
-#endif
-
-    LOG->info("Starting");
-
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     if (!std::filesystem::exists("save")) {
         const bool result = std::filesystem::create_directory("save");
         VV_REL_ASSERT(result, "[Main] Failed to create save dir")
@@ -27,8 +16,10 @@ int main()
     instance.main_loop();
     //    }
     //    catch (const std::exception& e) {
-    //        LOG->error(e.what());
+    //         LOGGER_THREAD(LogLevel::ERROR,string(e.what()))
+    //          PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     //        return EXIT_FAILURE;
     //    }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return EXIT_SUCCESS;
 }

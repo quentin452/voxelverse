@@ -3,14 +3,19 @@
 #include <sstream>
 
 #include "../common/assert.hpp"
-#include "../common/logger.hpp"
+
+#include <ThreadedLoggerForCPP/LoggerThread.hpp>
+
+#include <ThreadedLoggerForCPP/LoggerFileSystem.hpp>
+#include <ThreadedLoggerForCPP/LoggerGlobals.hpp>
+
+#include <game_performance_profiler.hpp>
 
 Server::Server(const bool cleanup_enet)
     : m_cleanup_enet(cleanup_enet)
     , m_exit(false)
     , m_server(nullptr)
 {
-    init_logger();
     VV_REL_ASSERT(enet_initialize() == 0, "[Server] Failed to initialize ENet");
 
     constexpr ENetAddress address { .host = ENET_HOST_ANY, .port = c_server_port };
@@ -22,7 +27,7 @@ Server::Server(const bool cleanup_enet)
         0); // outoing bandwith
     VV_REL_ASSERT(m_server != nullptr, "[Server] Unable to create ENetHost");
     m_thread = std::thread([this] { this->start(); });
-    LOG->info("[Server] Started");
+    LOGGER_THREAD(LogLevel::INFO, "[Server] Started")
 }
 
 Server::~Server()
@@ -37,6 +42,7 @@ Server::~Server()
 
 static std::string host_ip_to_string(uint32_t host)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     uint32_t ip[4];
     ip[0] = host & 0xff;
     host >>= 8;
@@ -48,42 +54,44 @@ static std::string host_ip_to_string(uint32_t host)
     std::stringstream ss;
     ss << static_cast<int>(ip[0]) << "." << static_cast<int>(ip[1]) << "." << static_cast<int>(ip[2]) << "."
        << static_cast<int>(ip[3]);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     return ss.str();
 }
 
 static void send_hello_packet(ENetPeer* peer)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     const std::string msg = "Hello World!";
     ENetPacket* packet = enet_packet_create(msg.data(), msg.length(), ENET_PACKET_FLAG_RELIABLE);
     enet_peer_send(peer, 0, packet);
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void Server::start() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     ENetEvent event;
     while (!m_exit) {
         while (enet_host_service(m_server, &event, 1000) > 0) {
             switch (event.type) {
-            case ENET_EVENT_TYPE_CONNECT:
-                LOG->info(
-                    "[Server] Client connected from {}:{}",
-                    host_ip_to_string(event.peer->address.host),
-                    event.peer->address.port);
-                // optionally store info with event
-                // event.peer->data = "info here";
+            case ENET_EVENT_TYPE_CONNECT: {
+                std::string clientInfo
+                    = host_ip_to_string(event.peer->address.host) + ":" + std::to_string(event.peer->address.port);
+                LOGGER_THREAD(LogLevel::INFO, "[Server] Client connected from " + clientInfo)
+            }
                 send_hello_packet(event.peer);
                 break;
-            case ENET_EVENT_TYPE_DISCONNECT:
-                LOG->info(
-                    "[Server] Client disconnected from {}:{}",
-                    host_ip_to_string(event.peer->address.host),
-                    event.peer->address.port);
-                break;
+            case ENET_EVENT_TYPE_DISCONNECT: {
+                std::string clientInfo
+                    = host_ip_to_string(event.peer->address.host) + ":" + std::to_string(event.peer->address.port);
+                LOGGER_THREAD(LogLevel::INFO, "[Server] Client disconnected from " + clientInfo)
+            } break;
             case ENET_EVENT_TYPE_RECEIVE:
             default:
                 break;
             }
         }
     }
-    LOG->info("[Server] Stopping");
+    LOGGER_THREAD(LogLevel::INFO, "[Server] Stopping")
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }

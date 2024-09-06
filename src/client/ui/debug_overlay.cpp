@@ -1,6 +1,7 @@
 #include "debug_overlay.hpp"
 
 #include "../world_data.hpp"
+#include <game_performance_profiler.hpp>
 
 DebugOverlay::DebugOverlay(TextPipeline& text_pipeline)
     : m_fps_text(text_pipeline, "", { 0.0f, 0.0f }, 0.8f, c_text_color)
@@ -28,18 +29,22 @@ DebugOverlay::DebugOverlay(TextPipeline& text_pipeline)
 
 void DebugOverlay::draw() const
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     for (const TextBuffer* buffer : m_left_column) {
         buffer->draw();
     }
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void DebugOverlay::update_fps(const int value)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::snprintf(m_str_buffer.data(), m_str_buffer.size(), "fps: %d", value);
     m_fps_text.update(m_str_buffer.data());
 
     std::snprintf(m_str_buffer.data(), m_str_buffer.size(), "ms: %.1f", 1000.0f / static_cast<float>(value));
     m_ms_text.update(m_str_buffer.data());
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 
 void DebugOverlay::resize()
@@ -53,11 +58,14 @@ void DebugOverlay::resize()
 }
 void DebugOverlay::update_gpu_name(const std::string& gpu)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::snprintf(m_str_buffer.data(), m_str_buffer.size(), "gpu: %s", gpu.data());
     m_gpu_text.update(m_str_buffer.data());
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
 void DebugOverlay::update_player_block_pos(const nnm::Vector3i pos)
 {
+    PROFILE_START(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
     std::snprintf(m_str_buffer.data(), m_str_buffer.size(), "block: [%d, %d, %d]", pos.x, pos.y, pos.z);
     m_player_block_text.update(m_str_buffer.data());
 
@@ -65,4 +73,5 @@ void DebugOverlay::update_player_block_pos(const nnm::Vector3i pos)
     std::snprintf(
         m_str_buffer.data(), m_str_buffer.size(), "chunk: [%d, %d, %d]", chunk_pos.x, chunk_pos.y, chunk_pos.z);
     m_player_chunk_text.update(m_str_buffer.data());
+    PROFILE_STOP(std::string("VOXELVERSE:") + ":" + __FUNCTION__)
 }
