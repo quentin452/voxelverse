@@ -152,6 +152,18 @@ add_shaders(voxelverse
 #target_include_directories(tests PRIVATE
 #        ${LIB_INCLUDES}
 #        ${TEST_LIB_INCLUDES})
+
+# Ajouter une cible personnalisée pour copier le dossier après la construction
+add_custom_command(
+    TARGET ${PROJECT_NAME}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/res"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/res
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/res"
+    COMMENT "Copying resource directory to build directory"
+)
+
 set(SOURCES
     ${SOURCE_FILES}
     ${LIB_SOURCE_FILES}
