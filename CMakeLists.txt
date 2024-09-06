@@ -152,3 +152,86 @@ add_shaders(voxelverse
 #target_include_directories(tests PRIVATE
 #        ${LIB_INCLUDES}
 #        ${TEST_LIB_INCLUDES})
+set(SOURCES
+    ${SOURCE_FILES}
+    ${LIB_SOURCE_FILES}
+    ${CMAKE_SOURCE_DIR}/src/client/main.cpp
+)
+
+# Common compilation options
+set(ALL_INCLUDE_DIR
+    ${LIB_INCLUDES}
+    ${CMAKE_SOURCE_DIR}/src
+)
+set(common_compile_options
+   -std=c++${CMAKE_CXX_STANDARD}
+   -Wall 
+   -compilerandversion=${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}
+   -Wmicrosoft 
+   -Wno-invalid-token-paste 
+   -Wno-unknown-pragmas 
+   -Wno-unused-value 
+   -fsyntax-only 
+   "\\\"-D_MT\\\"" 
+   "\\\"-D_DLL\\\"" 
+   "\\\"-DWIN32\\\"" 
+   "\\\"-D_WINDOWS\\\"" 
+   "\\\"-DCMAKE_INTDIR=/\\\"Debug/\\\"\\\"" 
+   "\\\"-D_DEBUG_FUNCTIONAL_MACHINERY\\\""   
+)
+
+# Add each include directory to the compilation options
+foreach(INCLUDE_DIR ${ALL_INCLUDE_DIR})
+    list(APPEND common_compile_options -I\\\"${INCLUDE_DIR}\\\")
+endforeach()
+
+# Add an extra quote to the last element
+list(LENGTH ALL_INCLUDE_DIR INCLUDE_DIR_COUNT)
+math(EXPR LAST_INDEX "${INCLUDE_DIR_COUNT} - 1")
+list(GET ALL_INCLUDE_DIR ${LAST_INDEX} LAST_INCLUDE_DIR)
+string(CONCAT LAST_INCLUDE_DIR_WITH_QUOTE ${LAST_INCLUDE_DIR} "\"")
+list(POP_BACK common_compile_options)
+list(APPEND common_compile_options ${LAST_INCLUDE_DIR_WITH_QUOTE})
+
+# Convert the list to a string with spaces between the options
+string(REPLACE ";" " " common_compile_options_string "${common_compile_options}")
+
+# Filter the source files to keep only .cpp and .hpp files
+list(FILTER SOURCES INCLUDE REGEX "\\.(cpp|hpp|h|c)$")
+
+set(compile_commands "")
+foreach(SOURCE_FILE ${SOURCES})
+    # Create a JSON string for each .cpp or .hpp source file
+    string(APPEND compile_commands
+        "    {\n"
+        "        \"directory\": \"${CMAKE_CURRENT_BINARY_DIR}\",\n"
+        "        \"command\": \"\\\"${CMAKE_CXX_COMPILER}\\\" -x c++ \\\"${SOURCE_FILE}\\\""
+    )
+
+    # Add the common compile options
+    foreach(OPTION ${common_compile_options})
+        string(APPEND compile_commands " ${OPTION}") 
+    endforeach()
+
+    # Add the rest of the command and JSON metadata
+    string(APPEND compile_commands
+        ",\n"
+        "        \"file\": \"${SOURCE_FILE}\"\n"
+        "    },\n"
+    )
+endforeach()
+
+# Remove the final comma
+string(REGEX REPLACE ",\n$" "" compile_commands "${compile_commands}")
+
+# Add brackets to form a JSON list
+set(compile_commands "[\n${compile_commands}\n]")
+
+# Write the entries to a JSON file
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json "${compile_commands}")
+
+# Add the custom target to generate compile_commands.json
+add_custom_target(generate_compile_commands
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+    COMMENT "Generating compile_commands.json"
+)
