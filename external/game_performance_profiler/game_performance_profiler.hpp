@@ -95,14 +95,14 @@ public:
                 double avgTimeSec = totalTimeSec / callCounts.at(key);
                 double maxTimeSec = maxTimes.at(key) / 1000000.0;
                 double combinedAvg = (avgTimeSec + maxTimeSec) / 2.0;
-                sortedData.push_back(std::make_tuple(key, totalTimeSec, avgTimeSec, 
-            std::sort(
-                sortedData.begin(),
-                sortedData.end(),
-                [](const std::tuple<std::string, double, double, double, double>& a,
-                   const std::tuple<std::string, double, double, double, double>& b) {
-                    return std::get<1>(b) < std::get<1>(a);
-                });
+                sortedData.push_back(std::make_tuple(key, totalTimeSec, avgTimeSec, maxTimeSec, combinedAvg));
+
+                totalProfilingTimeSec += totalTimeSec;
+            }
+
+            std::sort(sortedData.begin(), sortedData.end(), [](const auto& a, const auto& b) {
+                return std::get<1>(b) < std::get<1>(a);
+            });
 
             auto now = std::chrono::steady_clock::now();
             auto realTimeElapsed = std::chrono::duration_cast<std::chrono::seconds>(now - realTimeStart).count();
@@ -147,11 +147,6 @@ inline GamePerformanceProfiler gamePerformanceProfiler;
 #define PROFILE_START(customName) gamePerformanceProfiler.start(__FUNCTION__, __FILE__, __LINE__, customName);
 
 #define PROFILE_STOP(customName) gamePerformanceProfiler.stop(__FUNCTION__, __FILE__, __LINE__, customName);
-#else
-#define PROFILE_START(customName)
-#define PROFILE_STOP(customName)
-#endif
-formanceProfiler.stop(__FUNCTION__, __FILE__, __LINE__, customName);
 #else
 #define PROFILE_START(customName)
 #define PROFILE_STOP(customName)
