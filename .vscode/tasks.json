@@ -9,7 +9,7 @@
                 "-Command",
                 "if (!(Test-Path ${workspaceFolder}/build)) { mkdir ${workspaceFolder}/build };",
                 "cd ${workspaceFolder};",
-                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_FLAGS=\"/MP\" /incremental\";",
+                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17;",
                 "cmake --build build --config Release;",
             ],
             "group": {
@@ -30,7 +30,7 @@
                 "-Command",
                 "if (!(Test-Path ${workspaceFolder}/build)) { mkdir ${workspaceFolder}/build };",
                 "cd ${workspaceFolder};",
-                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17 -DPERFORMANCE_MONITOR=1 -DCMAKE_CXX_FLAGS=\"/MP\" /incremental\";",
+                "cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_STANDARD=17 -DPERFORMANCE_MONITOR=1;",
                 "cmake --build build --config Debug;",
             ],
             "group": {
